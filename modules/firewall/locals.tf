@@ -1,0 +1,43 @@
+locals {
+  instance_sg = {
+    name        = format("%s-%s-nfw-instance-sg", var.identifier, var.region_short_name)
+    description = "Instance SG (Allowing ICMP and HTTP/HTTPS access)"
+    ingress = merge(
+      (length(var.allow_ping_cidrs) > 0 ?
+        {
+          ping = {
+            description = "ping"
+            from        = -1
+            to          = -1
+            protocol    = "icmp"
+            cidr_blocks = ["10.0.0.0/8"]
+          }
+        } : {}
+      ),
+      {
+        http = {
+          description = "HTTP"
+          from        = 80
+          to          = 80
+          protocol    = "tcp"
+          cidr_blocks = var.gwlb_subnets_cidr
+        }
+        geneve = {
+          description = "GENEVE"
+          from        = 6081
+          to          = 6081
+          protocol    = "udp"
+          cidr_blocks = var.gwlb_subnets_cidr
+        }
+    })
+    egress = {
+      any = {
+        description = "Any traffic"
+        from        = 0
+        to          = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+    }
+  }
+}
