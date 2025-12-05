@@ -1,10 +1,10 @@
 resource "local_file" "policy" {
-  filename = "${path.module}/policy.json"
+  filename = "${path.module}/outputs/policy.json"
   content  = jsonencode(local.cwan_policy)
 }
 
 resource "local_file" "cmds" {
-  filename = "${path.module}/cmds.txt"
+  filename = "${path.module}/outputs/cmds.txt"
   content = templatefile(
     "${path.module}/cmds.tftpl",
     {

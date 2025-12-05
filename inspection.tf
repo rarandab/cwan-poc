@@ -62,6 +62,7 @@ module "nfw_vpc" {
   }
   vpc_flow_logs = {
     log_destination_type = "cloud-watch-logs"
+    retention_in_days    = 1
   }
 }
 
@@ -112,6 +113,7 @@ module "nfg_vpc" {
   }
   vpc_flow_logs = {
     log_destination_type = "cloud-watch-logs"
+    retention_in_days    = 1
   }
 }
 

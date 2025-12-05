@@ -18,28 +18,31 @@ locals {
       description                   = "NVAs segment"
       require_attachment_acceptance = true
       isolate_attachments           = true
+      share_with                    = ["hyb"]
     },
     {
       name                          = "hyb"
       description                   = "Hybrid segment"
       require_attachment_acceptance = true
       isolate_attachments           = true
+      share_with                    = ["nva", "shr"]
     },
     {
       name                          = "shr"
       description                   = "Shared Services segment"
       require_attachment_acceptance = true
       isolate_attachments           = false
-      share_with                    = [for s in var.core_network_config.segments : s.name]
+      share_with                    = concat(["hyb"], [for s in var.core_network_config.segments : s.name])
     }
   ]
-  extra_segment_sharing = flatten([
-    for s in local.cwn_basic_segments : [
-      for sw in s.share_with : {
-        s  = s.name
-        sw = sw
-      }
-  ] if length(try(s.share_with, [])) > 0])
+  reverse_segment_sharing = flatten([
+    for s in var.core_network_config.segments : [
+      for bs in local.cwn_basic_segments : {
+        segment    = s.name
+        share_with = bs.name
+      } if contains(bs.share_with, s.name)
+    ]
+  ])
   cwn_all_segments = merge(
     {
       for s in local.cwn_basic_segments : s.name => s

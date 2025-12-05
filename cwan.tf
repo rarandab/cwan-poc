@@ -131,23 +131,21 @@ data "aws_networkmanager_core_network_policy_document" "full" {
       description = "Basic Routes ${segment_actions.value.description}"
       action      = "share"
       mode        = "attachment-route"
-      share_with = concat(
-        [for s in local.cwn_basic_segments : format("cwnsgm%s%s", title(var.project_code), title(s.name)) if s.name != segment_actions.key],
-        [for s in try(segment_actions.value.share_with, []) : format("cwnsgm%s%s", title(var.project_code), title(s))]
-      )
+      share_with  = [for s in segment_actions.value.share_with : format("cwnsgm%s%s", title(var.project_code), title(s))]
     }
   }
 
   dynamic "segment_actions" {
-    for_each = { for i in local.extra_segment_sharing : "${i.s}${i.sw}" => i }
+    for_each = { for i in local.reverse_segment_sharing : "${i.segment}${i.share_with}" => i }
     content {
-      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.sw))
+      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.segment))
       description = "Basic Routes"
       action      = "share"
       mode        = "attachment-route"
-      share_with  = [format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.s))]
+      share_with  = [format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.share_with))]
     }
   }
+
 
   dynamic "segment_actions" {
     for_each = { for s, s_data in local.cwn_all_segments : s => s_data if !contains(["nva", "shr"], s) }
