@@ -13,7 +13,7 @@ provider "aws" {
   region = "us-west-1"
   default_tags {
     tags = {
-      "org:owner"   = "rarandab"
+      "org:owner"   = var.owner
       "org:project" = var.project_name
     }
   }

@@ -1,3 +1,8 @@
+variable "owner" {
+  description = "Infrastructure Owner"
+  type        = string
+}
+
 variable "project_name" {
   description = "Project Name"
   type        = string
@@ -27,7 +32,8 @@ variable "core_network_config" {
           use_edge_location = string
         })), null)
       })
-      cidrs = list(string)
+      cidr       = string
+      inspection = optional(bool, false)
     }))
     segments = list(object({
       name                          = string
@@ -36,6 +42,12 @@ variable "core_network_config" {
       isolate_attachments           = optional(bool, true)
     }))
   })
+}
+
+variable "endpoints" {
+  description = "Endpoints to be created in each region"
+  type        = list(string)
+  default     = []
 }
 
 variable "vpcs" {
@@ -48,20 +60,10 @@ variable "vpcs" {
   }))
 }
 
-variable "nva_vpcs" {
-  description = "NVA VPCs data "
-  type = list(object({
-    region  = string
-    cidr    = string
-    purpose = string
-  }))
-}
-
-variable "vpn" {
-  description = "VPN data"
+variable "onprem" {
+  description = "OnPrem data"
   type = object({
-    region     = string
-    asn_client = number
-    asn_aws    = number
+    region = string
+    asn    = number
   })
 }

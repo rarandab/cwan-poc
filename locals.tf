@@ -8,15 +8,6 @@ locals {
     "eu-south-1"   = "eus1"
     "eu-south-2"   = "eus2"
   }
-  azs_by_region = {
-    "eu-central-1" = ["a", "b"]
-    "eu-west-1"    = ["a", "b"]
-    "eu-west-2"    = ["a", "b"]
-    "eu-west-3"    = ["a", "b"]
-    "eu-north-1"   = ["a", "b"]
-    "eu-south-1"   = ["a", "b"]
-    "eu-south-2"   = ["a", "b"]
-  }
   corpo_cidrs = {
     onprem = "172.16.0.0/12"
     cloud  = "10.0.0.0/8"
@@ -33,8 +24,22 @@ locals {
       description                   = "Hybrid segment"
       require_attachment_acceptance = true
       isolate_attachments           = true
+    },
+    {
+      name                          = "shr"
+      description                   = "Shared Services segment"
+      require_attachment_acceptance = true
+      isolate_attachments           = false
+      share_with                    = [for s in var.core_network_config.segments : s.name]
     }
   ]
+  extra_segment_sharing = flatten([
+    for s in local.cwn_basic_segments : [
+      for sw in s.share_with : {
+        s  = s.name
+        sw = sw
+      }
+  ] if length(try(s.share_with, [])) > 0])
   cwn_all_segments = merge(
     {
       for s in local.cwn_basic_segments : s.name => s
@@ -43,6 +48,8 @@ locals {
       for s in var.core_network_config.segments : s.name => s
     }
   )
+  nfw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 255) if el.inspection }
+  shr_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 254) }
   non_routeable_cidrs = {
     secondary  = "100.64.100.0/22"
     inspection = "100.64.0.0/20"
@@ -78,4 +85,21 @@ locals {
       ]
     ]
   ])
+  regional_endpoints = flatten([
+    for el in var.core_network_config.edge_locations : [
+      for ep in var.endpoints : {
+        region  = el.region
+        service = ep
+      }
+    ]
+  ])
+  azs_by_region = {
+    "eu-central-1" = ["a", "b"]
+    "eu-west-1"    = ["a", "b"]
+    "eu-west-2"    = ["a", "b"]
+    "eu-west-3"    = ["a", "b"]
+    "eu-north-1"   = ["a", "b"]
+    "eu-south-1"   = ["a", "b"]
+    "eu-south-2"   = ["a", "b"]
+  }
 }

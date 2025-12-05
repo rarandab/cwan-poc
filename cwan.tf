@@ -1,9 +1,7 @@
-# AWS Cloud WAN Core Network Base Policy
-data "aws_networkmanager_core_network_policy_document" "this" {
+data "aws_networkmanager_core_network_policy_document" "basic" {
   core_network_configuration {
     vpn_ecmp_support = false
     asn_ranges       = var.core_network_config.asn_ranges
-
     dynamic "edge_locations" {
       for_each = { for el in var.core_network_config.edge_locations : el.region => el }
       content {
@@ -37,7 +35,6 @@ data "aws_networkmanager_core_network_policy_document" "this" {
       operator = "equals"
       type     = "tag-value"
       value    = format("cwnnfg%sIns", title(var.project_code))
-
     }
     action {
       add_to_network_function_group = format("cwnnfg%sIns", title(var.project_code))
@@ -47,12 +44,67 @@ data "aws_networkmanager_core_network_policy_document" "this" {
   attachment_policies {
     rule_number     = 200
     condition_logic = "or"
-
     conditions {
       type = "tag-exists"
       key  = "tec:cwnsgm"
     }
+    action {
+      association_method = "tag"
+      tag_value_of_key   = "tec:cwnsgm"
+    }
+  }
+}
 
+data "aws_networkmanager_core_network_policy_document" "full" {
+  core_network_configuration {
+    vpn_ecmp_support = false
+    asn_ranges       = var.core_network_config.asn_ranges
+    dynamic "edge_locations" {
+      for_each = { for el in var.core_network_config.edge_locations : el.region => el }
+      content {
+        location = edge_locations.key
+        asn      = edge_locations.value.asn
+      }
+    }
+  }
+
+  dynamic "segments" {
+    for_each = local.cwn_all_segments
+    content {
+      name                          = format("cwnsgm%s%s", title(var.project_code), title(segments.key))
+      description                   = format("%s %s", title(var.project_name), segments.value["description"])
+      require_attachment_acceptance = segments.value["require_attachment_acceptance"]
+      isolate_attachments           = segments.value["isolate_attachments"]
+    }
+  }
+
+  network_function_groups {
+    name                          = format("cwnnfg%sIns", title(var.project_code))
+    description                   = format("%s Inspection", title(var.project_name))
+    require_attachment_acceptance = true
+  }
+
+  attachment_policies {
+    rule_number     = 100
+    condition_logic = "or"
+    conditions {
+      key      = "tec:cwnnfg"
+      operator = "equals"
+      type     = "tag-value"
+      value    = format("cwnnfg%sIns", title(var.project_code))
+    }
+    action {
+      add_to_network_function_group = format("cwnnfg%sIns", title(var.project_code))
+    }
+  }
+
+  attachment_policies {
+    rule_number     = 200
+    condition_logic = "or"
+    conditions {
+      type = "tag-exists"
+      key  = "tec:cwnsgm"
+    }
     action {
       association_method = "tag"
       tag_value_of_key   = "tec:cwnsgm"
@@ -76,15 +128,29 @@ data "aws_networkmanager_core_network_policy_document" "this" {
     for_each = { for s in local.cwn_basic_segments : s.name => s }
     content {
       segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
-      description = "Basic Routes"
+      description = "Basic Routes ${segment_actions.value.description}"
       action      = "share"
       mode        = "attachment-route"
-      share_with  = [for s in local.cwn_basic_segments : format("cwnsgm%s%s", title(var.project_code), title(s.name)) if s.name != segment_actions.key]
+      share_with = concat(
+        [for s in local.cwn_basic_segments : format("cwnsgm%s%s", title(var.project_code), title(s.name)) if s.name != segment_actions.key],
+        [for s in try(segment_actions.value.share_with, []) : format("cwnsgm%s%s", title(var.project_code), title(s))]
+      )
     }
   }
 
   dynamic "segment_actions" {
-    for_each = { for s, s_data in local.cwn_all_segments : s => s_data if s != "nva" }
+    for_each = { for i in local.extra_segment_sharing : "${i.s}${i.sw}" => i }
+    content {
+      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.sw))
+      description = "Basic Routes"
+      action      = "share"
+      mode        = "attachment-route"
+      share_with  = [format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.s))]
+    }
+  }
+
+  dynamic "segment_actions" {
+    for_each = { for s, s_data in local.cwn_all_segments : s => s_data if !contains(["nva", "shr"], s) }
     content {
       segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
       description = "Inspection E-W"
@@ -101,7 +167,7 @@ data "aws_networkmanager_core_network_policy_document" "this" {
         }
       }
       when_sent_to {
-        segments = [for s, s_data in local.cwn_all_segments : format("cwnsgm%s%s", title(var.project_code), title(s)) if s != "nva"]
+        segments = [for s, s_data in local.cwn_all_segments : format("cwnsgm%s%s", title(var.project_code), title(s)) if !contains(["nva", "shr"], s)]
       }
     }
   }
@@ -131,7 +197,7 @@ data "aws_networkmanager_core_network_policy_document" "this" {
 }
 
 locals {
-  cwan_policy = merge(jsondecode(data.aws_networkmanager_core_network_policy_document.this.json), local.extra_cwan_policy)
+  cwan_policy = merge(jsondecode(data.aws_networkmanager_core_network_policy_document.full.json), local.extra_cwan_policy)
   extra_cwan_policy = {
     "version" = "2025.11"
     "routing-policies" = [
@@ -163,27 +229,25 @@ locals {
         "routing-policy-description" = "Summarize Cloud CIDRs"
         "routing-policy-direction"   = "outbound"
         "routing-policy-number"      = 200
-        "routing-policy-rules" = flatten([
+        "routing-policy-rules" = [
           for i, el in var.core_network_config.edge_locations :
-          [for j, c in el.cidrs :
-            {
-              "rule-number" = 100 + i * 10 + j
-              "rule-definition" = {
-                "match-conditions" = [
-                  {
-                    "type" : "prefix-in-cidr"
-                    "value" : c
-                  }
-                ]
-                "condition-logic" : "or"
-                "action" : {
-                  "type" : "summarize"
-                  "value" : c
+          {
+            "rule-number" = 100 + i * 10
+            "rule-definition" = {
+              "match-conditions" = [
+                {
+                  "type" : "prefix-in-cidr"
+                  "value" : el.cidr
                 }
+              ]
+              "condition-logic" : "or"
+              "action" : {
+                "type" : "summarize"
+                "value" : el.cidr
               }
             }
-          ]
-        ])
+          }
+        ]
       }
     ]
     "attachment-routing-policy-rules" : [
@@ -230,9 +294,10 @@ resource "aws_networkmanager_global_network" "this" {
 
 # AWS Cloud Wan Core Network
 resource "aws_networkmanager_core_network" "this" {
-  description        = format("Core Network %s", title(var.project_name))
-  global_network_id  = aws_networkmanager_global_network.this.id
-  create_base_policy = false
+  description          = format("Core Network %s", title(var.project_name))
+  global_network_id    = aws_networkmanager_global_network.this.id
+  create_base_policy   = true
+  base_policy_document = jsonencode(jsondecode(data.aws_networkmanager_core_network_policy_document.basic.json))
 
   tags = {
     Name = format("%s-cwncnt", var.project_code)
@@ -242,7 +307,7 @@ resource "aws_networkmanager_core_network" "this" {
 # AWS Cloud WAN Core Network Policy Attachment
 resource "aws_networkmanager_core_network_policy_attachment" "this" {
   core_network_id = aws_networkmanager_core_network.this.id
-  //policy_document = jsonencode(jsondecode(data.aws_networkmanager_core_network_policy_document.this.json))
+  //policy_document = jsonencode(jsondecode(data.aws_networkmanager_core_network_policy_document.full.json))
   policy_document = jsonencode(local.cwan_policy)
 }
 

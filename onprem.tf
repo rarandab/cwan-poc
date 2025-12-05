@@ -1,8 +1,8 @@
 module "onprem" {
   source = "../terraform-aws-vpc"
 
-  region     = var.vpn.region
-  name       = format("%s-%s-onprem-vpc", var.project_code, local.region_short_names[var.vpn.region])
+  region     = var.onprem.region
+  name       = format("%s-%s-onprem-vpc", var.project_code, local.region_short_names[var.onprem.region])
   cidr_block = "172.16.0.0/25"
   az_count   = 1
 
@@ -17,16 +17,16 @@ module "onprem" {
 }
 
 resource "aws_eip" "vpnclient" {
-  region = var.vpn.region
+  region = var.onprem.region
   domain = "vpc"
   tags = {
-    Name = format("%s-%s-vpn-eip", var.project_code, local.region_short_names[var.vpn.region])
+    Name = format("%s-%s-vpn-eip", var.project_code, local.region_short_names[var.onprem.region])
   }
 }
 
 resource "aws_cloudformation_stack" "vpnclient" {
-  region = var.vpn.region
-  name   = format("%s-%s-vpnclient-cfs", var.project_code, local.region_short_names[var.vpn.region])
+  region = var.onprem.region
+  name   = format("%s-%s-vpnclient-cfs", var.project_code, local.region_short_names[var.onprem.region])
   parameters = {
     pOrg                         = "rarandab"
     pSystem                      = "ireland"
@@ -53,7 +53,4 @@ resource "aws_cloudformation_stack" "vpnclient" {
   }
   template_body = file("${path.module}/vpn-gateway-strongswan.yml")
   capabilities  = ["CAPABILITY_NAMED_IAM"]
-  //lifecycle {
-  //  ignore_changes = [template_body]
-  //}
 }

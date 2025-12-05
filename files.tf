@@ -20,7 +20,7 @@ resource "local_file" "cmds" {
       ]
       onprem = {
         id     = aws_cloudformation_stack.vpnclient.outputs.oVpnGatewayId
-        region = var.vpn.region
+        region = var.onprem.region
       }
       instances = flatten([
         for c, c_d in module.compute : [
