@@ -1,12 +1,14 @@
 data "aws_networkmanager_core_network_policy_document" "basic" {
   core_network_configuration {
-    vpn_ecmp_support = false
-    asn_ranges       = var.core_network_config.asn_ranges
+    vpn_ecmp_support   = false
+    asn_ranges         = var.core_network_config.asn_ranges
+    inside_cidr_blocks = var.core_network_config.inside_cidr_blocks
     dynamic "edge_locations" {
       for_each = { for el in var.core_network_config.edge_locations : el.region => el }
       content {
-        location = edge_locations.key
-        asn      = edge_locations.value.asn
+        location           = edge_locations.key
+        asn                = edge_locations.value.asn
+        inside_cidr_blocks = edge_locations.value.inside_cidr_blocks
       }
     }
   }
@@ -116,7 +118,6 @@ data "aws_networkmanager_core_network_policy_document" "full" {
     for_each = local.cwn_all_segments
     content {
       segment                 = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
-      description             = "BlackHole CIDRs"
       action                  = "create-route"
       destination_cidr_blocks = local.blackhole_cidrs
       destinations            = ["blackhole"]
@@ -125,24 +126,22 @@ data "aws_networkmanager_core_network_policy_document" "full" {
   */
 
   dynamic "segment_actions" {
-    for_each = { for s in local.cwn_basic_segments : s.name => s }
+    for_each = { for s in local.cwn_basic_segments : s.name => s if length(s.share_with) > 0 }
     content {
-      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
-      description = "Basic Routes ${segment_actions.value.description}"
-      action      = "share"
-      mode        = "attachment-route"
-      share_with  = [for s in segment_actions.value.share_with : format("cwnsgm%s%s", title(var.project_code), title(s))]
+      segment    = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
+      action     = "share"
+      mode       = "attachment-route"
+      share_with = [for s in segment_actions.value.share_with : format("cwnsgm%s%s", title(var.project_code), title(s))]
     }
   }
 
   dynamic "segment_actions" {
     for_each = { for i in local.reverse_segment_sharing : "${i.segment}${i.share_with}" => i }
     content {
-      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.segment))
-      description = "Basic Routes"
-      action      = "share"
-      mode        = "attachment-route"
-      share_with  = [format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.share_with))]
+      segment    = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.segment))
+      action     = "share"
+      mode       = "attachment-route"
+      share_with = [format("cwnsgm%s%s", title(var.project_code), title(segment_actions.value.share_with))]
     }
   }
 
@@ -150,10 +149,9 @@ data "aws_networkmanager_core_network_policy_document" "full" {
   dynamic "segment_actions" {
     for_each = { for s, s_data in local.cwn_all_segments : s => s_data if !contains(["nva", "shr"], s) }
     content {
-      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
-      description = "Inspection E-W"
-      action      = "send-via"
-      mode        = "single-hop"
+      segment = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
+      action  = "send-via"
+      mode    = "single-hop"
       via {
         network_function_groups = [format("cwnnfg%sIns", title(var.project_code))]
         dynamic "with_edge_override" {
@@ -173,9 +171,8 @@ data "aws_networkmanager_core_network_policy_document" "full" {
   dynamic "segment_actions" {
     for_each = { for s in var.core_network_config.segments : s.name => s }
     content {
-      segment     = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
-      description = "Inspection N-S"
-      action      = "send-to"
+      segment = format("cwnsgm%s%s", title(var.project_code), title(segment_actions.key))
+      action  = "send-to"
       via {
         network_function_groups = [format("cwnnfg%sIns", title(var.project_code))]
         dynamic "with_edge_override" {
@@ -246,6 +243,33 @@ locals {
             }
           }
         ]
+      },
+      {
+        "routing-policy-name"        = "blockSDWanTransit"
+        "routing-policy-description" = "Block SDWan Transit CIDRs"
+        "routing-policy-direction"   = "inbound"
+        "routing-policy-number"      = 300
+        "routing-policy-rules" = [
+          {
+            "rule-number" = 100
+            "rule-definition" = {
+              "match-conditions" = [
+                {
+                  "type"  = "prefix-in-cidr"
+                  "value" = "169.254.0.0/16"
+                },
+                {
+                  "type"  = "prefix-in-cidr"
+                  "value" = "172.16.0.0/12"
+                }
+              ]
+              "condition-logic" = "or"
+              "action" = {
+                "type" = "drop"
+              }
+            }
+          }
+        ]
       }
     ]
     "attachment-routing-policy-rules" : [
@@ -273,7 +297,8 @@ locals {
         ],
         "action" : {
           "associate-routing-policies" : [
-            "summarizeCloud"
+            "summarizeCloud",
+            "blockSDWanTransit"
           ]
         }
       }

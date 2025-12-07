@@ -21,10 +21,12 @@ variable "project_code" {
 variable "core_network_config" {
   description = "Cloud Wan Core Network Config"
   type = object({
-    asn_ranges = list(string)
+    asn_ranges         = list(string)
+    inside_cidr_blocks = optional(list(string), null)
     edge_locations = list(object({
-      region = string
-      asn    = optional(number, null)
+      region             = string
+      asn                = optional(number, null)
+      inside_cidr_blocks = optional(list(string), null)
       edge_overrides = object({
         send_to = optional(string, null)
         send_via = optional(list(object({
@@ -63,7 +65,25 @@ variable "vpcs" {
 variable "onprem" {
   description = "OnPrem data"
   type = object({
-    region = string
-    asn    = number
+    region           = string
+    asn              = number
+    additional_cidrs = optional(list(string), [])
   })
+}
+
+variable "vpn" {
+  description = "VPN data"
+  type = object({
+    region = string
+  })
+}
+
+variable "sdwan" {
+  description = "Cloud WAN Connect Tunnel-Less configuration"
+  type = object({
+    regions = list(string)
+    asn     = number
+    cidrs   = optional(list(string), [])
+  })
+  default = null
 }

@@ -34,22 +34,22 @@ module "nfw_vpc" {
   }
   subnets = {
     public = {
-      name_prefix               = format("%s-%s-pub-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix               = format("%s-%s-nfw-pub-snt", var.project_code, local.region_short_names[each.key])
       cidrs                     = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 0), 1, 1)
       nat_gateway_configuration = "single_az"
       map_public_ip_on_launch   = false
     }
     nfw = {
-      name_prefix             = format("%s-%s-app-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix             = format("%s-%s-nfw-nfw-snt", var.project_code, local.region_short_names[each.key])
       cidrs                   = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 1), 1, 1)
       connect_to_public_natgw = true
     }
     glb = {
-      name_prefix = format("%s-%s-lbs-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix = format("%s-%s-nfw-glb-snt", var.project_code, local.region_short_names[each.key])
       cidrs       = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 2), 1, 1)
     }
     core_network = {
-      name_prefix            = format("%s-%s-cwn-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix            = format("%s-%s-nfw-cwn-snt", var.project_code, local.region_short_names[each.key])
       cidrs                  = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 3), 1, 1)
       appliance_mode_support = false
       require_acceptance     = true
