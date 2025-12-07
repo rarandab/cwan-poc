@@ -47,14 +47,15 @@ module "sdw_vpc" {
       map_public_ip_on_launch   = false
     }
     core_network = {
-      name_prefix            = format("%s-%s-sdw-cwn-snt", var.project_code, local.region_short_names[each.key])
-      netmask                = 28
-      appliance_mode_support = false
-      require_acceptance     = true
-      accept_attachment      = true
+      name_prefix             = format("%s-%s-sdw-cwn-snt", var.project_code, local.region_short_names[each.key])
+      netmask                 = 28
+      connect_to_public_natgw = true
+      appliance_mode_support  = false
+      require_acceptance      = true
+      accept_attachment       = true
 
       tags = {
-        "tec:cwnsgm" = format("cwnsgm%sNva", title(var.project_code))
+        "tec:cwnsgm" = format("cwnsgm%sHyb", title(var.project_code))
       }
     }
   }
@@ -76,18 +77,20 @@ resource "aws_security_group" "sdwan" {
 resource "aws_security_group_rule" "sdwan_i_bgp" {
   for_each = local.sdw_cidrs
 
+  region            = each.key
   security_group_id = aws_security_group.sdwan[each.key].id
   type              = "ingress"
   description       = "BGP from Cloud Wan"
   protocol          = "tcp"
   from_port         = 179
   to_port           = 179
-  cidr_blocks       = [for bc in try(aws_networkmanager_connect_peer.sdwan_peer[each.key].configuration[0].bgp_configurations, []) : bc.core_network_address]
+  cidr_blocks       = [for bc in try(aws_networkmanager_connect_peer.sdwan_peer[each.key].configuration[0].bgp_configurations, []) : format("%s/32", bc.core_network_address)]
 }
 
 resource "aws_security_group_rule" "sdwan_o_any" {
   for_each = local.sdw_cidrs
 
+  region            = each.key
   security_group_id = aws_security_group.sdwan[each.key].id
   type              = "egress"
   description       = "All outbound"
@@ -162,6 +165,12 @@ resource "aws_networkmanager_connect_attachment" "sdwan" {
   depends_on = [aws_networkmanager_core_network_policy_attachment.this]
 }
 
+resource "aws_networkmanager_attachment_accepter" "sdwan" {
+  for_each        = local.sdw_cidrs
+  attachment_id   = aws_networkmanager_connect_attachment.sdwan[each.key].id
+  attachment_type = aws_networkmanager_connect_attachment.sdwan[each.key].attachment_type
+}
+
 # Connect Peer
 resource "aws_networkmanager_connect_peer" "sdwan_peer" {
   for_each = local.sdw_cidrs
@@ -181,6 +190,7 @@ resource "aws_networkmanager_connect_peer" "sdwan_peer" {
 resource "aws_route" "cwan_peers" {
   for_each = { for i in flatten([for k, v in local.sdw_cidrs : [for index in range(0, 2) : { region = k, index = index }]]) : "${i.region}-${i.index}" => i }
 
+  region                 = each.value.region
   route_table_id         = module.sdw_vpc[each.value.region].rt_attributes_by_type_by_az.core_network[module.sdw_vpc[each.value.region].azs[0]].id
   destination_cidr_block = format("%s/32", aws_networkmanager_connect_peer.sdwan_peer[each.value.region].configuration[0].bgp_configurations[each.value.index].core_network_address)
   core_network_arn       = aws_networkmanager_core_network.this.arn

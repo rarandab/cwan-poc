@@ -59,13 +59,15 @@ data "aws_networkmanager_core_network_policy_document" "basic" {
 
 data "aws_networkmanager_core_network_policy_document" "full" {
   core_network_configuration {
-    vpn_ecmp_support = false
-    asn_ranges       = var.core_network_config.asn_ranges
+    vpn_ecmp_support   = false
+    asn_ranges         = var.core_network_config.asn_ranges
+    inside_cidr_blocks = var.core_network_config.inside_cidr_blocks
     dynamic "edge_locations" {
       for_each = { for el in var.core_network_config.edge_locations : el.region => el }
       content {
-        location = edge_locations.key
-        asn      = edge_locations.value.asn
+        location           = edge_locations.key
+        asn                = edge_locations.value.asn
+        inside_cidr_blocks = edge_locations.value.inside_cidr_blocks
       }
     }
   }
@@ -254,14 +256,29 @@ locals {
             "rule-number" = 100
             "rule-definition" = {
               "match-conditions" = [
-                {
-                  "type"  = "prefix-in-cidr"
-                  "value" = "169.254.0.0/16"
-                },
-                {
-                  "type"  = "prefix-in-cidr"
-                  "value" = "172.16.0.0/12"
-                }
+                for cidr in local.sdw_cidrs :
+                { "type" = "prefix-equals", "value" = cidr }
+              ]
+              "condition-logic" = "or"
+              "action" = {
+                "type" = "drop"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "routing-policy-name"        = "blockInsideCidrs"
+        "routing-policy-description" = "Block Inside CIDRs"
+        "routing-policy-direction"   = "inbound"
+        "routing-policy-number"      = 400
+        "routing-policy-rules" = [
+          {
+            "rule-number" = 100
+            "rule-definition" = {
+              "match-conditions" = [
+                for cidr in var.core_network_config.inside_cidr_blocks :
+                { "type" = "prefix-in-cidr", "value" = cidr }
               ]
               "condition-logic" = "or"
               "action" = {
@@ -298,7 +315,8 @@ locals {
         "action" : {
           "associate-routing-policies" : [
             "summarizeCloud",
-            "blockSDWanTransit"
+            "blockSDWanTransit",
+            "blockInsideCidrs"
           ]
         }
       }

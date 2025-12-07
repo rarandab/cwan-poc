@@ -3,10 +3,12 @@ resource "local_file" "policy" {
   content  = jsonencode(local.cwan_policy)
 }
 
-//resource "local_file" "userdata" {
-//  filename = "${path.module}/outputs/userdata.sh"
-//  content  = local.sdwan_user_data
-//}
+resource "local_file" "sdwan" {
+  for_each = local.sdw_cidrs
+
+  filename = "${path.module}/outputs/userdata-${local.region_short_names[each.key]}.sh"
+  content  = data.template_cloudinit_config.sdwan[each.key].rendered
+}
 
 //resource "local_file" "cmds" {
 //  filename = "${path.module}/outputs/cmds.txt"

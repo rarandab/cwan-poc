@@ -33,14 +33,7 @@ locals {
       require_attachment_acceptance = true
       isolate_attachments           = true
       share_with                    = ["nva", "shr"]
-    },
-    //{
-    //  name                          = "sdw"
-    //  description                   = "SDWan segment"
-    //  require_attachment_acceptance = true
-    //  isolate_attachments           = true
-    //  share_with                    = []
-    //}
+    }
   ]
   reverse_segment_sharing = flatten([
     for s in var.core_network_config.segments : [
@@ -59,8 +52,8 @@ locals {
     }
   )
   nfw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 255) if el.inspection }
-  sdw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 254) if contains(try(var.sdwan.regions, []), el.region) }
   shr_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 250) }
+  sdw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 254) if contains(try(var.sdwan.regions, []), el.region) }
   non_routeable_cidrs = {
     secondary  = "100.64.100.0/22"
     inspection = "100.64.0.0/20"
