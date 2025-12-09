@@ -127,7 +127,7 @@ module "firewall" {
   firewall_subnets         = values({ for k, v in module.nfw_vpc[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "nfw" })
   gwlb_subnets             = values({ for k, v in module.nfw_vpc[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "glb" })
   gwlb_subnets_cidr        = values({ for k, v in module.nfw_vpc[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.cidr_block if split("/", k)[0] == "glb" })
-  instance_type            = "t3.micro"
+  instance_type            = "t3.small"
   ec2_iam_instance_profile = aws_iam_instance_profile.common.id
   number_azs               = length(module.nfw_vpc[each.key].azs)
   identifier               = var.project_code
