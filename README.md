@@ -571,7 +571,7 @@ This PoC deploys significant AWS resources. Key cost drivers:
 - **Network Firewall**: Firewall endpoints and processing (per hour + GB processed)
 - **Gateway Load Balancer**: Endpoints and data processing
 - **NAT Gateways**: Per hour + data transfer
-- **EC2 Instances**: t3.micro instances for workloads and SD-WAN
+- **EC2 Instances**: t3.small instances for workloads and SD-WAN
 - **VPC Endpoints**: Interface endpoints (per hour)
 - **Route 53 Resolver**: Endpoints (per hour + queries)
 - **Data Transfer**: Inter-region and inter-AZ traffic

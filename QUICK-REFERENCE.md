@@ -268,7 +268,7 @@ aws logs describe-log-streams --log-group-name <name> --region <region>
 ## Cost Optimization Tips
 
 1. **Destroy when not in use**: `terraform destroy`
-2. **Use smaller instance types**: t3.micro for testing
+2. **Use smaller instance types**: t3.small for testing
 3. **Limit regions**: Start with 1-2 regions
 4. **Reduce NAT Gateways**: Use single_az configuration
 5. **Monitor data transfer**: Inter-region traffic is expensive

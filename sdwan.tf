@@ -10,7 +10,7 @@
 #   vpc_cidr         = "172.17.0.0/25"
 #   segment          = "hyb"
 #   bgp_asn          = 65100
-#   instance_type    = "t3.micro"
+#   instance_type    = "t3.small"
 #   additional_cidrs = ["172.30.0.0/16"]
 #   bgp_peer_cidr    = "169.254.10.0/29"
 # }
@@ -137,7 +137,7 @@ resource "aws_instance" "sdwan" {
 
   region                      = each.key
   ami                         = data.aws_ssm_parameter.sdwan[each.key].value
-  instance_type               = "t3.micro"
+  instance_type               = "t3.small"
   iam_instance_profile        = aws_iam_instance_profile.common.name
   user_data_base64            = data.template_cloudinit_config.sdwan[each.key].rendered
   user_data_replace_on_change = true
