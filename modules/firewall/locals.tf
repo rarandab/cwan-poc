@@ -1,6 +1,6 @@
 locals {
   instance_sg = {
-    name        = format("%s-%s-nfw-instance-sg", var.identifier, var.region_short_name)
+    name        = format("%s-%s-vsg-nfw", var.identifier, var.region_short_name)
     description = "Instance SG (Allowing ICMP and HTTP/HTTPS access)"
     ingress = merge(
       (length(var.allow_ping_cidrs) > 0 ?

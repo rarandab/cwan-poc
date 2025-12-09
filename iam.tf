@@ -12,14 +12,20 @@ data "aws_iam_policy_document" "ec2_role_trust_policy" {
 }
 
 resource "aws_iam_role" "common" {
-  name               = format("%s-generic-role", var.project_code)
+  name               = format("%s-irl-common", var.project_code)
   path               = "/${var.project_code}/"
   assume_role_policy = data.aws_iam_policy_document.ec2_role_trust_policy.json
+  tags = {
+    Name = format("%s-irl-common", var.project_code)
+  }
 }
 
 resource "aws_iam_instance_profile" "common" {
-  name = format("%s-generic-profile", var.project_code)
+  name = format("%s-iip-common", var.project_code)
   role = aws_iam_role.common.id
+  tags = {
+    Name = format("%s-iip-common", var.project_code)
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_managed_common" {

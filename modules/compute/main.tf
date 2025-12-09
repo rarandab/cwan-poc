@@ -34,7 +34,7 @@ resource "aws_security_group" "instance_sg" {
   }
 
   tags = {
-    Name = "${var.vpc_name}-instance-sg-${var.identifier}"
+    Name = local.instance_sg.name
   }
 }
 
@@ -59,7 +59,7 @@ resource "aws_instance" "workload" {
   }
 
   tags = {
-    Name                = "${var.vpc_name}-wrkld-${count.index + 1}-${var.identifier}"
+    Name                = format("%s-%s-ec2-wkl%02d", var.identifier, var.region_short_name, count.index + 1)
     coe_scheduler_state = "running"
   }
 }

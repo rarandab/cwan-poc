@@ -329,7 +329,7 @@ resource "aws_networkmanager_global_network" "this" {
   description = format("Global Network %s", title(var.project_name))
 
   tags = {
-    Name = format("%s-cwngln", var.project_code)
+    Name = format("%s-cgn", var.project_code)
   }
 }
 
@@ -341,7 +341,7 @@ resource "aws_networkmanager_core_network" "this" {
   base_policy_document = jsonencode(jsondecode(data.aws_networkmanager_core_network_policy_document.basic.json))
 
   tags = {
-    Name = format("%s-cwncnt", var.project_code)
+    Name = format("%s-ccn", var.project_code)
   }
 }
 

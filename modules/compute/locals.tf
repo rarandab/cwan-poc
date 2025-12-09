@@ -1,6 +1,6 @@
 locals {
   instance_sg = {
-    name        = "instance_security_group"
+    name        = format("%s-%s-vsg-wkl", var.identifier, var.region_short_name)
     description = "Instance SG (Allowing ICMP and HTTP/HTTPS access)"
     ingress = {
       icmp = {

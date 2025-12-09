@@ -74,14 +74,14 @@ resource "aws_instance" "firewall" {
   }
 
   tags = {
-    Name                = format("%s-%s-nfw-firewall%2d-ec2", var.identifier, var.region_short_name, count.index + 1)
+    Name                = format("%s-%s-ec2-nfw%02d", var.identifier, var.region_short_name, count.index + 1)
     coe_scheduler_state = "running"
   }
 }
 
 resource "aws_lb_target_group" "firewall_instances" {
   region   = var.region
-  name     = format("%s-%s-nfw-tg", var.identifier, var.region_short_name)
+  name     = format("%s-%s-ltg-nfw", var.identifier, var.region_short_name)
   port     = 6081
   protocol = "GENEVE"
   vpc_id   = var.vpc_id
@@ -97,7 +97,7 @@ resource "aws_lb_target_group_attachment" "firewall" {
 
 resource "aws_lb" "firewall" {
   region                           = var.region
-  name                             = format("%s-%s-nfw-glb", var.identifier, var.region_short_name)
+  name                             = format("%s-%s-glb-nfw", var.identifier, var.region_short_name)
   load_balancer_type               = "gateway"
   enable_cross_zone_load_balancing = false
 
@@ -124,7 +124,7 @@ resource "aws_vpc_endpoint_service" "firewall" {
   acceptance_required        = false
   gateway_load_balancer_arns = [aws_lb.firewall.arn]
   tags = {
-    Name = format("%s-%s-nfw-svc", var.identifier, var.region_short_name)
+    Name = format("%s-%s-ves-nfw", var.identifier, var.region_short_name)
   }
 }
 

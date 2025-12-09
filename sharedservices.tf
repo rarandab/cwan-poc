@@ -4,7 +4,7 @@ module "shr_vpc" {
   source   = "../terraform-aws-vpc"
   for_each = { for el in var.core_network_config.edge_locations : el.region => el }
 
-  name                                 = format("%s-%s-shr-vpc", var.project_code, local.region_short_names[each.key])
+  name                                 = format("%s-%s-vpc-shr", var.project_code, local.region_short_names[each.key])
   region                               = each.value.region
   cidr_block                           = local.shr_cidrs[each.key]
   vpc_assign_generated_ipv6_cidr_block = false
@@ -20,15 +20,15 @@ module "shr_vpc" {
   }
   subnets = {
     enp = {
-      name_prefix = format("%s-%s-enp-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix = format("%s-%s-vsn-enp", var.project_code, local.region_short_names[each.key])
       cidrs       = cidrsubnets(cidrsubnet(local.shr_cidrs[each.key], 1, 0), 1, 1)
     }
     dns = {
-      name_prefix = format("%s-%s-dns-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix = format("%s-%s-vsn-dns", var.project_code, local.region_short_names[each.key])
       cidrs       = cidrsubnets(cidrsubnet(local.shr_cidrs[each.key], 2, 2), 1, 1)
     }
     core_network = {
-      name_prefix            = format("%s-%s-cwn-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.key])
       cidrs                  = cidrsubnets(cidrsubnet(local.shr_cidrs[each.key], 2, 3), 1, 1)
       appliance_mode_support = false
       require_acceptance     = true
@@ -49,8 +49,8 @@ resource "aws_security_group" "endpoint" {
   for_each = { for el in var.core_network_config.edge_locations : el.region => el }
 
   region      = each.key
-  name        = format("%s-%s-enp-sg", var.project_code, local.region_short_names[each.key])
-  description = "Service endpoint SG"
+  name        = format("%s-%s-vsg-enpoints", var.project_code, local.region_short_names[each.key])
+  description = "Service endpoints SG"
   vpc_id      = module.shr_vpc[each.key].vpc_attributes.id
   ingress {
     from_port   = 443
@@ -76,7 +76,7 @@ resource "aws_vpc_endpoint" "service" {
     aws_security_group.endpoint[each.value.region].id,
   ]
   tags = {
-    Name = format("%s-%s-%s-enp", var.project_code, local.region_short_names[each.value.region], each.value.service)
+    Name = format("%s-%s-enp-%s", var.project_code, local.region_short_names[each.value.region], each.value.service)
   }
 }
 
@@ -84,7 +84,7 @@ resource "aws_security_group" "r53_inbound" {
   for_each = { for el in var.core_network_config.edge_locations : el.region => el }
 
   region      = each.key
-  name        = format("%s-%s-iep-sg", var.project_code, local.region_short_names[each.key])
+  name        = format("%s-%s-vsg-iep", var.project_code, local.region_short_names[each.key])
   description = "Route53 resolver SG"
   vpc_id      = module.shr_vpc[each.key].vpc_attributes.id
   ingress {
@@ -111,7 +111,7 @@ resource "aws_security_group" "r53_outbound" {
   for_each = { for el in var.core_network_config.edge_locations : el.region => el }
 
   region      = each.key
-  name        = format("%s-%s-oep-sg", var.project_code, local.region_short_names[each.key])
+  name        = format("%s-%s-vsg-oep", var.project_code, local.region_short_names[each.key])
   description = "Route53 resolver SG"
   vpc_id      = module.shr_vpc[each.key].vpc_attributes.id
   egress {
@@ -138,7 +138,7 @@ resource "aws_route53_resolver_endpoint" "inbound" {
   for_each = { for el in var.core_network_config.edge_locations : el.region => el }
 
   region                 = each.key
-  name                   = format("%s-%s-iep-r53", var.project_code, local.region_short_names[each.key])
+  name                   = format("%s-%s-r53-iep", var.project_code, local.region_short_names[each.key])
   direction              = "INBOUND"
   resolver_endpoint_type = "IPV4"
   security_group_ids     = [aws_security_group.r53_inbound[each.key].id]
@@ -150,7 +150,7 @@ resource "aws_route53_resolver_endpoint" "inbound" {
   }
   protocols = ["Do53", "DoH"]
   tags = {
-    Name = format("%s-%s-iep-r53", var.project_code, local.region_short_names[each.key])
+    Name = format("%s-%s-r53-iep", var.project_code, local.region_short_names[each.key])
   }
 }
 
@@ -158,7 +158,7 @@ resource "aws_route53_resolver_endpoint" "outbound" {
   for_each = { for el in var.core_network_config.edge_locations : el.region => el }
 
   region                 = each.key
-  name                   = format("%s-%s-iep-r53", var.project_code, local.region_short_names[each.key])
+  name                   = format("%s-%s-r53-oep", var.project_code, local.region_short_names[each.key])
   direction              = "OUTBOUND"
   resolver_endpoint_type = "IPV4"
   security_group_ids     = [aws_security_group.r53_outbound[each.key].id]
@@ -170,7 +170,7 @@ resource "aws_route53_resolver_endpoint" "outbound" {
   }
   protocols = ["Do53", "DoH"]
   tags = {
-    Name = format("%s-%s-oep-r53", var.project_code, local.region_short_names[each.key])
+    Name = format("%s-%s-r53-oep", var.project_code, local.region_short_names[each.key])
   }
 }
 
@@ -179,7 +179,7 @@ resource "aws_route53_resolver_rule" "default" {
 
   region               = each.key
   domain_name          = "."
-  name                 = format("%s-%s-dfl-rrr", var.project_code, local.region_short_names[each.key])
+  name                 = format("%s-%s-rrr-dfl", var.project_code, local.region_short_names[each.key])
   rule_type            = "FORWARD"
   resolver_endpoint_id = aws_route53_resolver_endpoint.outbound[each.key].id
   dynamic "target_ip" {
@@ -190,7 +190,7 @@ resource "aws_route53_resolver_rule" "default" {
     }
   }
   tags = {
-    Name = format("%s-%s-dfl-rrr", var.project_code, local.region_short_names[each.key])
+    Name = format("%s-%s-rrr-dfl", var.project_code, local.region_short_names[each.key])
   }
 }
 
@@ -204,7 +204,7 @@ resource "aws_route53_resolver_rule" "aws" {
 
   region               = each.value.orig
   domain_name          = format("%s.amazonaws.com", each.value.dest)
-  name                 = format("%s-%s-aws_%s-rrr", var.project_code, local.region_short_names[each.value.orig], local.region_short_names[each.value.dest])
+  name                 = format("%s-%s-rrr-aws_%s", var.project_code, local.region_short_names[each.value.orig], local.region_short_names[each.value.dest])
   rule_type            = "FORWARD"
   resolver_endpoint_id = aws_route53_resolver_endpoint.outbound[each.value.orig].id
   dynamic "target_ip" {
@@ -215,6 +215,6 @@ resource "aws_route53_resolver_rule" "aws" {
     }
   }
   tags = {
-    Name = format("%s-%s-aws_%s-rrr", var.project_code, local.region_short_names[each.value.orig], local.region_short_names[each.value.dest])
+    Name = format("%s-%s-rrr-aws_%s", var.project_code, local.region_short_names[each.value.orig], local.region_short_names[each.value.dest])
   }
 }

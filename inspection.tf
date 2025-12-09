@@ -2,7 +2,7 @@ resource "aws_ec2_managed_prefix_list" "corpo" {
   for_each = toset([for el in var.core_network_config.edge_locations : el.region])
 
   region         = each.key
-  name           = format("%s-%s-corpo-pl", var.project_code, each.key)
+  name           = format("%s-%s-vpl-corpo", var.project_code, local.region_short_names[each.key])
   address_family = "IPv4"
   max_entries    = 5
   dynamic "entry" {
@@ -21,7 +21,7 @@ module "nfw_vpc" {
   //for_each = { for v in var.nva_vpcs : v.region => v if v.purpose == "nfw" }
   for_each = { for el in var.core_network_config.edge_locations : el.region => el if el.inspection }
 
-  name                                 = format("%s-%s-nfw-vpc", var.project_code, local.region_short_names[each.key])
+  name                                 = format("%s-%s-vpc-nfw", var.project_code, local.region_short_names[each.key])
   region                               = each.value.region
   cidr_block                           = local.nfw_cidrs[each.key]
   vpc_assign_generated_ipv6_cidr_block = false
@@ -34,22 +34,22 @@ module "nfw_vpc" {
   }
   subnets = {
     public = {
-      name_prefix               = format("%s-%s-nfw-pub-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix               = format("%s-%s-vsn-pub", var.project_code, local.region_short_names[each.key])
       cidrs                     = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 0), 1, 1)
       nat_gateway_configuration = "single_az"
       map_public_ip_on_launch   = false
     }
     nfw = {
-      name_prefix             = format("%s-%s-nfw-nfw-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix             = format("%s-%s-vsn-nfw", var.project_code, local.region_short_names[each.key])
       cidrs                   = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 1), 1, 1)
       connect_to_public_natgw = true
     }
     glb = {
-      name_prefix = format("%s-%s-nfw-glb-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix = format("%s-%s-vsn-glb", var.project_code, local.region_short_names[each.key])
       cidrs       = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 2), 1, 1)
     }
     core_network = {
-      name_prefix            = format("%s-%s-nfw-cwn-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.key])
       cidrs                  = cidrsubnets(cidrsubnet(local.nfw_cidrs[each.key], 2, 3), 1, 1)
       appliance_mode_support = false
       require_acceptance     = true
@@ -73,7 +73,7 @@ module "nfg_vpc" {
   //for_each = toset([for v in var.nva_vpcs : v.region if v.purpose == "nfw"])
   for_each = toset([for el in var.core_network_config.edge_locations : el.region if el.inspection])
 
-  name                                 = format("%s-%s-nfg-vpc", var.project_code, local.region_short_names[each.key])
+  name                                 = format("%s-%s-vpc-nfg", var.project_code, local.region_short_names[each.key])
   region                               = each.value
   cidr_block                           = local.non_routeable_cidrs["inspection"]
   vpc_assign_generated_ipv6_cidr_block = false
@@ -86,18 +86,18 @@ module "nfg_vpc" {
   }
   subnets = {
     public = {
-      name_prefix               = format("%s-%s-pub-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix               = format("%s-%s-vsn-pub", var.project_code, local.region_short_names[each.key])
       cidrs                     = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 0), 1, 1)
       nat_gateway_configuration = "single_az"
       map_public_ip_on_launch   = false
     }
     nfw = {
-      name_prefix             = format("%s-%s-nfw-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix             = format("%s-%s-vsn-nfw", var.project_code, local.region_short_names[each.key])
       cidrs                   = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 1), 1, 1)
       connect_to_public_natgw = true
     }
     core_network = {
-      name_prefix            = format("%s-%s-cwn-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.key])
       cidrs                  = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 3), 1, 1)
       appliance_mode_support = true
       require_acceptance     = true
@@ -142,7 +142,7 @@ resource "aws_vpc_endpoint" "firewall" {
   vpc_endpoint_type = module.firewall[each.value.vpc_key].endpoint_service.service_type
   vpc_id            = module.nfg_vpc[each.value.vpc_key].vpc_attributes.id
   tags = {
-    Name = format("%s-%s-vse", var.project_code, each.key)
+    Name = format("%s-%s-gle-nfg", var.project_code, each.key)
   }
 }
 

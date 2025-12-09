@@ -62,22 +62,6 @@ variable "vpcs" {
   }))
 }
 
-variable "onprem" {
-  description = "OnPrem data"
-  type = object({
-    region           = string
-    asn              = number
-    additional_cidrs = optional(list(string), [])
-  })
-}
-
-variable "vpn" {
-  description = "VPN data"
-  type = object({
-    region = string
-  })
-}
-
 variable "sdwan" {
   description = "Cloud WAN Connect Tunnel-Less configuration"
   type = object({

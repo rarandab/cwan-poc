@@ -29,7 +29,7 @@ module "sdw_vpc" {
   source   = "../terraform-aws-vpc"
   for_each = local.sdw_cidrs
 
-  name                                 = format("%s-%s-sdw-vpc", var.project_code, local.region_short_names[each.key])
+  name                                 = format("%s-%s-vpc-sdw", var.project_code, local.region_short_names[each.key])
   region                               = each.key
   cidr_block                           = each.value
   vpc_assign_generated_ipv6_cidr_block = false
@@ -41,13 +41,13 @@ module "sdw_vpc" {
   }
   subnets = {
     public = {
-      name_prefix               = format("%s-%s-sdw-pub-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix               = format("%s-%s-vsn-pub", var.project_code, local.region_short_names[each.key])
       netmask                   = 28
       nat_gateway_configuration = "single_az"
       map_public_ip_on_launch   = false
     }
     core_network = {
-      name_prefix             = format("%s-%s-sdw-cwn-snt", var.project_code, local.region_short_names[each.key])
+      name_prefix             = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.key])
       netmask                 = 28
       connect_to_public_natgw = true
       appliance_mode_support  = false
@@ -69,7 +69,7 @@ resource "aws_security_group" "sdwan" {
   for_each = local.sdw_cidrs
 
   region      = each.key
-  name        = format("%s-%s-sdw-sg", var.project_code, local.region_short_names[each.key])
+  name        = format("%s-%s-vsg-sdw", var.project_code, local.region_short_names[each.key])
   description = "Security group for Cloud WAN Connect Tunnel-Less instance"
   vpc_id      = module.sdw_vpc[each.key].vpc_attributes.id
 }
@@ -108,7 +108,7 @@ resource "aws_network_interface" "sdwan" {
   subnet_id       = module.sdw_vpc[each.key].core_network_subnet_attributes_by_az[module.sdw_vpc[each.key].azs[0]].id
   security_groups = [aws_security_group.sdwan[each.key].id]
   tags = {
-    Name = format("%s-%s-sdw-eni", var.project_code, local.region_short_names[each.key])
+    Name = format("%s-%s-eni-sdwan", var.project_code, local.region_short_names[each.key])
   }
 }
 
@@ -145,7 +145,7 @@ resource "aws_instance" "sdwan" {
     network_interface_id = aws_network_interface.sdwan[each.key].id
   }
   tags = {
-    Name = format("%s-%s-sdw-ec2", var.project_code, local.region_short_names[each.key])
+    Name = format("%s-%s-ec2-sdwan", var.project_code, local.region_short_names[each.key])
   }
 }
 
@@ -159,7 +159,7 @@ resource "aws_networkmanager_connect_attachment" "sdwan" {
     protocol = "NO_ENCAP"
   }
   tags = {
-    "Name"       = format("%s-%s-sdw-connect-att", var.project_code, local.region_short_names[each.key])
+    "Name"       = format("%s-%s-cat-sdwan", var.project_code, local.region_short_names[each.key])
     "tec:cwnsgm" = format("cwnsgm%sHyb", title(var.project_code))
   }
   depends_on = [aws_networkmanager_core_network_policy_attachment.this]
@@ -183,8 +183,9 @@ resource "aws_networkmanager_connect_peer" "sdwan_peer" {
   subnet_arn = module.sdw_vpc[each.key].core_network_subnet_attributes_by_az[module.sdw_vpc[each.key].azs[0]].arn
 
   tags = {
-    Name = format("%s-%s-sdw-connect-peer", var.project_code, local.region_short_names[each.key])
+    Name = format("%s-%s-per-sdwan", var.project_code, local.region_short_names[each.key])
   }
+  depends_on = [aws_networkmanager_attachment_accepter.sdwan]
 }
 
 resource "aws_route" "cwan_peers" {

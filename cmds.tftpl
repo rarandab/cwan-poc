@@ -1,34 +1,42 @@
 # Show Routing information
 aws networkmanager list-attachment-routing-policy-associations --core-network-id ${core_network_id}
-aws networkmanager list-core-network-routing-information --core-network-id ${core_network_id} --segment-name cwnsgmPccPro --edge-location eu-central-1
-aws networkmanager get-network-routes --global-network-id ${global_network_id} --route-table-identifier 'CoreNetworkNetworkFunctionGroup={CoreNetworkId=${core_network_id},NetworkFunctionGroupName=cwnnfgPccIns,EdgeLocation=eu-central-1}'
-aws networkmanager get-network-routes --global-network-id ${global_network_id} --route-table-identifier 'CoreNetworkSegmentEdge={CoreNetworkId=${core_network_id},SegmentName=cwnsgmPccPro,EdgeLocation=eu-central-1}'
-aws networkmanager get-network-routes --global-network-id ${global_network_id} --route-table-identifier 'CoreNetworkSegmentEdge={CoreNetworkId=${core_network_id},SegmentName=cwnsgmPccHyb,EdgeLocation=eu-central-1}'
+aws networkmanager get-network-routes --global-network-id ${global_network_id} --route-table-identifier 'CoreNetworkNetworkFunctionGroup={CoreNetworkId=${core_network_id},NetworkFunctionGroupName=${nfg},EdgeLocation=${default_region}}'
+%{for s in segments ~}
+aws networkmanager list-core-network-routing-information --core-network-id ${core_network_id} --segment-name ${s} --edge-location ${default_region}
+aws networkmanager get-network-routes --global-network-id ${global_network_id} --route-table-identifier 'CoreNetworkSegmentEdge={CoreNetworkId=${core_network_id},SegmentName=${s},EdgeLocation=${default_region}}'
+%{endfor~}
 
 # Enable VPC Routing Policy
 %{for a in vpc_attachments ~}
-aws networkmanager put-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id} --routing-policy-label vpcAttachments
+[${a.name}] aws networkmanager put-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id} --routing-policy-label vpcAttachments
 %{endfor~}
 
 # Enable Hybrid Routing Policy
 %{for a in hybrid_attachments ~}
-aws networkmanager put-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id} --routing-policy-label hybridAttachments
+[${a.region}] aws networkmanager put-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id} --routing-policy-label hybridAttachments
 %{endfor~}
 
 # Disable VPC Routing Policy
 %{for a in vpc_attachments ~}
-aws networkmanager remove-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id}
+[${a.name}] aws networkmanager remove-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id}
 %{endfor~}
 
 # Disable Hybrid Routing Policy
 %{for a in hybrid_attachments ~}
-aws networkmanager remove-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id}
+[${a.region}] aws networkmanager remove-attachment-routing-policy-label --core-network-id ${core_network_id} --attachment-id ${a.id}
 %{endfor~}
 
 # Connect to instances
-%{for i in instances ~}
-aws ssm start-session --target ${i.id} --region ${i.region} [${i.name}]
+%{for i in ec2_instances ~}
+[${i.name}] aws ssm start-session --target ${i.id} --region ${i.region}
 %{endfor~}
 
-# Connect to OnPrem
-aws ssm start-session --target ${onprem.id} --region ${onprem.region}
+# Connect to firewalls
+%{for i in nfw_instances ~}
+[${i.name}] aws ssm start-session --target ${i.id} --region ${i.region}
+%{endfor~}
+
+# Connect to SDWan
+%{for i in sdw_instances ~}
+[${i.name}] aws ssm start-session --target ${i.id} --region ${i.region}
+%{endfor~}

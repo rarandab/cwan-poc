@@ -4,7 +4,7 @@ module "wkl_vpc" {
   source   = "../terraform-aws-vpc"
   for_each = { for v in var.vpcs : "${local.region_short_names[v.region]}-${v.name}" => v }
 
-  name                                 = format("%s-%s-vpc", var.project_code, each.key)
+  name                                 = format("%s-%s-vpc-%s", var.project_code, local.region_short_names[each.value.region], each.value.segment)
   region                               = each.value.region
   cidr_block                           = each.value.cidr
   vpc_assign_generated_ipv6_cidr_block = false
@@ -21,15 +21,15 @@ module "wkl_vpc" {
   }
   subnets = {
     app = {
-      name_prefix = format("%s-%s-app-snt", var.project_code, each.key)
+      name_prefix = format("%s-%s-vsn-app", var.project_code, local.region_short_names[each.value.region])
       cidrs       = cidrsubnets(cidrsubnet(each.value.cidr, 1, 0), 1, 1)
     }
     lbs = {
-      name_prefix = format("%s-%s-lbs-snt", var.project_code, each.key)
+      name_prefix = format("%s-%s-vsn-lbs", var.project_code, local.region_short_names[each.value.region])
       cidrs       = cidrsubnets(cidrsubnet(each.value.cidr, 2, 2), 1, 1)
     }
     core_network = {
-      name_prefix            = format("%s-%s-cwn-snt", var.project_code, each.key)
+      name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.value.region])
       cidrs                  = cidrsubnets(cidrsubnet(each.value.cidr, 2, 3), 1, 1)
       appliance_mode_support = false
       require_acceptance     = true
@@ -51,7 +51,7 @@ module "wkl_vpc-2nd_cidr" {
   source   = "../terraform-aws-vpc"
   for_each = { for v in var.vpcs : "${local.region_short_names[v.region]}-${v.name}" => v }
 
-  name               = format("%s-%s-vpc", var.project_code, each.key)
+  name               = format("%s-%s-vpc-%s", var.project_code, local.region_short_names[each.value.region], each.value.segment)
   region             = each.value.region
   create_vpc         = false
   vpc_id             = module.wkl_vpc[each.key].vpc_attributes.id
@@ -60,7 +60,7 @@ module "wkl_vpc-2nd_cidr" {
   azs                = slice(data.aws_availability_zones.available[each.value.region].names, 0, 2)
   subnets = {
     dat = {
-      name_prefix = format("%s-%s-dat-snt", var.project_code, each.key)
+      name_prefix = format("%s-%s-vsn-dat", var.project_code, local.region_short_names[each.value.region])
       cidrs       = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["secondary"], 2, 0), 1, 1)
     }
   }
@@ -92,8 +92,9 @@ module "compute" {
   for_each = { for v in var.vpcs : "${local.region_short_names[v.region]}-${v.name}" => v }
 
   region                   = each.value.region
+  region_short_name        = local.region_short_names[each.value.region]
   source                   = "./modules/compute"
-  vpc_name                 = format("%s-%s-vpc", var.project_code, each.key)
+  vpc_name                 = format("%s-%s-vpc-%s", var.project_code, local.region_short_names[each.value.region], each.value.segment)
   vpc_id                   = module.wkl_vpc[each.key].vpc_attributes.id
   workload_subnets         = values({ for k, v in module.wkl_vpc[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "app" })
   instance_type            = "t3.small"

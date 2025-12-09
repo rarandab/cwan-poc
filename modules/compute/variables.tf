@@ -37,3 +37,8 @@ variable "region" {
   type        = string
   description = "Region"
 }
+
+variable "region_short_name" {
+  type        = string
+  description = "Short name for the region"
+}
