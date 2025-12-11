@@ -60,14 +60,11 @@ When working with AWS infrastructure and Terraform code, leverage the installed 
 
 2. **Code Analysis and Validation**
    - `ExecuteTerraformCommand`: Run terraform init, plan, validate, apply, destroy
-   - `RunCheckovScan`: Security and compliance scanning (Note: May have Windows path issues)
 
 #### Recommended Workflow
 
 1. **Research Phase**: Search for existing modules and provider documentation
-2. **Implementation Phase**: Use terraform commands for validation and planning
-3. **Security Phase**: Run Checkov scans for compliance checking
-4. **Deployment Phase**: Use terraform apply with proper validation
+2. **Implementation Phase**: Use terraform commands for validation
 
 #### Example Usage Patterns
 

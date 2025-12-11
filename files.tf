@@ -42,7 +42,7 @@ resource "local_file" "cmds" {
         ]
       ])
       nfw_instances = flatten([
-        for c, c_d in module.firewall : [
+        for c, c_d in module.gwlbtunfw : [
           for i, ic in c_d.instances_created : {
             name   = format("%s%g", c, i)
             id     = ic.id

@@ -42,7 +42,7 @@ resource "aws_security_group" "instance_sg" {
 # EC2 instances
 data "template_cloudinit_config" "user_data" {
   base64_encode = true
-  gzip          = true
+  gzip          = false
 
   part {
     content_type = "text/x-shellscript"

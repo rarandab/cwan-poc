@@ -31,12 +31,19 @@ locals {
         }
     })
     egress = {
-      any = {
-        description = "Any traffic"
-        from        = 0
-        to          = 0
-        protocol    = "-1"
-        cidr_blocks = ["0.0.0.0/0"]
+      geneve = {
+        description = "GENEVE"
+        from        = 6081
+        to          = 6081
+        protocol    = "udp"
+        cidr_blocks = var.gwlb_subnets_cidr
+      }
+      https = {
+        description = "HTTPs"
+        from        = 443
+        to          = 443
+        protocol    = "tcp"
+        cidr_blocks = var.gwlb_subnets_cidr
       }
     }
   }

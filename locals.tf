@@ -55,7 +55,7 @@ locals {
   shr_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 250) }
   sdw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 254) if contains(try(var.sdwan.regions, []), el.region) }
   non_routeable_cidrs = {
-    secondary  = "100.64.100.0/22"
+    workload   = "100.64.128.0/18"
     inspection = "100.64.0.0/20"
   }
   blackhole_cidrs = [for k, v in local.non_routeable_cidrs : v]
@@ -97,13 +97,4 @@ locals {
       }
     ]
   ])
-  azs_by_region = {
-    "eu-central-1" = ["a", "b"]
-    "eu-west-1"    = ["a", "b"]
-    "eu-west-2"    = ["a", "b"]
-    "eu-west-3"    = ["a", "b"]
-    "eu-north-1"   = ["a", "b"]
-    "eu-south-1"   = ["a", "b"]
-    "eu-south-2"   = ["a", "b"]
-  }
 }

@@ -14,7 +14,8 @@ When working with this codebase, understand these core design principles:
 2. **Mandatory Inspection**: All inter-segment traffic MUST route through inspection VPCs with GWLB
 3. **Segment Isolation**: Traffic between segments is controlled via Cloud WAN routing policies
 4. **Shared Services Model**: Common services (VPC endpoints, DNS) are centralized to reduce duplication
-5. **Simulated Components**: Inspection and SD-WAN use Linux instances to simulate appliances (not production-grade)
+5. **Inspection**: For the traffic inspection the PoC will provide two options (for selecting one or another with a variable), the first (and default one) simulate it with a linux instance using aws-gateway-load-balancer-tunnel-handler, the second one is using a AWS Network Firewall.
+5. **Hybrid Components**: Will simulate the hybrid connectivity with SD-WAN use Linux instances to simulate appliances (not production-grade)
 
 ## Network Segments
 
@@ -30,7 +31,7 @@ The architecture uses five Cloud WAN segments with specific purposes:
 
 When modifying routing or adding resources, respect these traffic flows:
 
-1. **Intra-Segment**: Direct routing within same segment (pro-to-pro, npd-to-npd)
+1. **Intra-Segment**: Direct routing within same segment (pro-to-pro, npd-to-npd), this routing must be inspected.
 2. **Inter-Segment**: MUST route through inspection VPCs (pro → nva → npd)
 3. **Shared Services Access**: All segments can reach shr segment directly
 4. **Hybrid Connectivity**: SD-WAN instances in hyb segment advertise routes via BGP to Cloud WAN
@@ -39,7 +40,7 @@ When modifying routing or adding resources, respect these traffic flows:
 ## Component Purposes
 
 ### Inspection VPCs (nva segment)
-- Simulate centralized traffic inspection using Linux instances with GWLB tunnel handler
+- Simulate centralized traffic inspection using Linux instances with GWLB tunnel handler or use AWS NFW
 - NOT production Network Firewall - uses basic Linux instances for PoC demonstration
 - One per region for high availability
 - Secondary CIDR (100.64.0.0/20) for GWLB endpoints
@@ -57,7 +58,7 @@ When modifying routing or adding resources, respect these traffic flows:
 ### SD-WAN VPCs (hyb segment)
 - Simulate on-premises connectivity using FRRouting (FRR) on Linux instances
 - BGP peering with Cloud WAN via Connect Tunnel-Less (no GRE tunnels)
-- Advertise on-premises routes (simulated with 172.16.0.0/16)
+- Advertise on-premises routes (simulated with CIDRs within the range 172.16.0.0/12)
 
 ## Key Constraints for Modifications
 

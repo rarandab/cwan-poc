@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Security Analysis with Checkov",
+  "description": "Executes Checkov security scanning tool on the project and analyzes the security findings to provide comprehensive security assessment",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "checkov --quiet -d . --framework terraform --output json"
+  }
+}

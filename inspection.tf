@@ -85,20 +85,9 @@ module "nfg_vpc" {
     arn = aws_networkmanager_core_network.this.arn
   }
   subnets = {
-    public = {
-      name_prefix               = format("%s-%s-vsn-pub", var.project_code, local.region_short_names[each.key])
-      cidrs                     = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 0), 1, 1)
-      nat_gateway_configuration = "single_az"
-      map_public_ip_on_launch   = false
-    }
-    nfw = {
-      name_prefix             = format("%s-%s-vsn-nfw", var.project_code, local.region_short_names[each.key])
-      cidrs                   = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 1), 1, 1)
-      connect_to_public_natgw = true
-    }
     core_network = {
       name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.key])
-      cidrs                  = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 3), 1, 1)
+      cidrs                  = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 0), 1, 1)
       appliance_mode_support = true
       require_acceptance     = true
       accept_attachment      = true
@@ -106,6 +95,17 @@ module "nfg_vpc" {
       tags = {
         "tec:cwnnfg" = format("cwnnfg%sIns", title(var.project_code))
       }
+    }
+    nfw = {
+      name_prefix             = format("%s-%s-vsn-nfw", var.project_code, local.region_short_names[each.key])
+      cidrs                   = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 1), 1, 1)
+      connect_to_public_natgw = true
+    }
+    public = {
+      name_prefix               = format("%s-%s-vsn-pub", var.project_code, local.region_short_names[each.key])
+      cidrs                     = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["inspection"], 2, 2), 1, 1)
+      nat_gateway_configuration = "single_az"
+      map_public_ip_on_launch   = false
     }
   }
   core_network_routes = {
@@ -117,8 +117,8 @@ module "nfg_vpc" {
   }
 }
 
-module "firewall" {
-  source   = "./modules/firewall"
+module "gwlbtunfw" {
+  source   = "./modules/gwlbtunfw"
   for_each = { for el in var.core_network_config.edge_locations : el.region => el if el.inspection }
 
   region                   = each.value.region
@@ -137,10 +137,10 @@ resource "aws_vpc_endpoint" "firewall" {
   for_each = { for s in local.nfg_nfw_subnets : "${s.vpc_key}-${s.az_id}" => s }
 
   region            = each.value.vpc_key
-  service_name      = module.firewall[each.value.vpc_key].endpoint_service.service_name
-  subnet_ids        = [each.value.subnet_id]
-  vpc_endpoint_type = module.firewall[each.value.vpc_key].endpoint_service.service_type
+  service_name      = module.gwlbtunfw[each.value.vpc_key].endpoint_service.service_name
+  vpc_endpoint_type = module.gwlbtunfw[each.value.vpc_key].endpoint_service.service_type
   vpc_id            = module.nfg_vpc[each.value.vpc_key].vpc_attributes.id
+  subnet_ids        = [each.value.subnet_id]
   tags = {
     Name = format("%s-%s-gle-nfg", var.project_code, each.key)
   }

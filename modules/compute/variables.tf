@@ -42,3 +42,14 @@ variable "region_short_name" {
   type        = string
   description = "Short name for the region"
 }
+
+variable "allowed_icmp_pls" {
+  type        = list(string)
+  description = "Allowed PrefixLists for incoming ICMP traffic"
+  default     = []
+}
+
+variable "target_group_arn" {
+  type        = string
+  description = "ARN of the target group to associate the instances with."
+}
