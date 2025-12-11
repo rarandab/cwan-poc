@@ -63,6 +63,8 @@ resource "aws_instance" "firewall" {
   user_data_base64            = data.template_cloudinit_config.user_data.rendered
   user_data_replace_on_change = true
   source_dest_check           = false
+  monitoring                  = true
+  ebs_optimized               = true
 
   metadata_options {
     http_endpoint = "enabled"
@@ -99,7 +101,8 @@ resource "aws_lb" "firewall" {
   region                           = var.region
   name                             = format("%s-%s-glb-nfw", var.identifier, var.region_short_name)
   load_balancer_type               = "gateway"
-  enable_cross_zone_load_balancing = false
+  enable_cross_zone_load_balancing = true
+  enable_deletion_protection       = true
 
   dynamic "subnet_mapping" {
     for_each = var.gwlb_subnets
@@ -121,7 +124,7 @@ resource "aws_lb_listener" "firewall" {
 
 resource "aws_vpc_endpoint_service" "firewall" {
   region                     = var.region
-  acceptance_required        = false
+  acceptance_required        = true
   gateway_load_balancer_arns = [aws_lb.firewall.arn]
   tags = {
     Name = format("%s-%s-ves-nfw", var.identifier, var.region_short_name)

@@ -87,17 +87,43 @@ resource "aws_security_group_rule" "sdwan_i_bgp" {
   cidr_blocks       = [for bc in try(aws_networkmanager_connect_peer.sdwan_peer[each.key].configuration[0].bgp_configurations, []) : format("%s/32", bc.core_network_address)]
 }
 
-resource "aws_security_group_rule" "sdwan_o_any" {
+resource "aws_security_group_rule" "sdwan_o_https" {
   for_each = local.sdw_cidrs
 
   region            = each.key
   security_group_id = aws_security_group.sdwan[each.key].id
   type              = "egress"
-  description       = "All outbound"
-  protocol          = "-1"
-  from_port         = 0
-  to_port           = 0
+  description       = "HTTPS outbound for package updates"
+  protocol          = "tcp"
+  from_port         = 443
+  to_port           = 443
   cidr_blocks       = ["0.0.0.0/0"]
+}
+
+resource "aws_security_group_rule" "sdwan_o_http" {
+  for_each = local.sdw_cidrs
+
+  region            = each.key
+  security_group_id = aws_security_group.sdwan[each.key].id
+  type              = "egress"
+  description       = "HTTP outbound for package updates"
+  protocol          = "tcp"
+  from_port         = 80
+  to_port           = 80
+  cidr_blocks       = ["0.0.0.0/0"]
+}
+
+resource "aws_security_group_rule" "sdwan_o_bgp" {
+  for_each = local.sdw_cidrs
+
+  region            = each.key
+  security_group_id = aws_security_group.sdwan[each.key].id
+  type              = "egress"
+  description       = "BGP to Cloud WAN"
+  protocol          = "tcp"
+  from_port         = 179
+  to_port           = 179
+  cidr_blocks       = [for bc in try(aws_networkmanager_connect_peer.sdwan_peer[each.key].configuration[0].bgp_configurations, []) : format("%s/32", bc.core_network_address)]
 }
 
 
@@ -141,6 +167,18 @@ resource "aws_instance" "sdwan" {
   iam_instance_profile        = aws_iam_instance_profile.common.name
   user_data_base64            = data.template_cloudinit_config.sdwan[each.key].rendered
   user_data_replace_on_change = true
+  monitoring                  = true
+  ebs_optimized               = true
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
+
   primary_network_interface {
     network_interface_id = aws_network_interface.sdwan[each.key].id
   }

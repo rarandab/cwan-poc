@@ -53,6 +53,7 @@ resource "aws_security_group" "endpoint" {
   description = "Service endpoints SG"
   vpc_id      = module.shr_vpc[each.key].vpc_attributes.id
   ingress {
+    description = "HTTPS access to VPC endpoints"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -88,18 +89,21 @@ resource "aws_security_group" "r53_inbound" {
   description = "Route53 resolver SG"
   vpc_id      = module.shr_vpc[each.key].vpc_attributes.id
   ingress {
+    description = "DNS UDP queries from other region resolvers"
     from_port   = 53
     to_port     = 53
     protocol    = "udp"
     cidr_blocks = [for b in local.shr_cidrs : cidrsubnet(b, 2, 2)]
   }
   ingress {
+    description = "DNS TCP queries from region resolvers"
     from_port   = 53
     to_port     = 53
     protocol    = "tcp"
     cidr_blocks = [for b in local.shr_cidrs : cidrsubnet(b, 2, 2)]
   }
   ingress {
+    description = "DoH queries from region resolvers"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -115,18 +119,21 @@ resource "aws_security_group" "r53_outbound" {
   description = "Route53 resolver SG"
   vpc_id      = module.shr_vpc[each.key].vpc_attributes.id
   egress {
+    description = "DNS UDP queries to other region resolvers"
     from_port   = 53
     to_port     = 53
     protocol    = "udp"
     cidr_blocks = [for b in local.shr_cidrs : cidrsubnet(b, 2, 2)]
   }
   egress {
+    description = "DNS TCP queries other region resolvers"
     from_port   = 53
     to_port     = 53
     protocol    = "tcp"
     cidr_blocks = [for b in local.shr_cidrs : cidrsubnet(b, 2, 2)]
   }
   egress {
+    description = "DoH queries other region resolvers"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"

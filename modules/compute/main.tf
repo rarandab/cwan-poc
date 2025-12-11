@@ -48,6 +48,8 @@ resource "aws_instance" "workload" {
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
   subnet_id                   = var.workload_subnets[count.index]
   iam_instance_profile        = var.ec2_iam_instance_profile
+  monitoring                  = true
+  ebs_optimized               = true
 
   metadata_options {
     http_endpoint = "enabled"
