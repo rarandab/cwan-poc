@@ -6,11 +6,11 @@ locals {
       (length(var.allow_ping_cidrs) > 0 ?
         {
           ping = {
-            description = "ping"
+            description = "ICMP"
             from        = -1
             to          = -1
             protocol    = "icmp"
-            cidr_blocks = ["10.0.0.0/8"]
+            cidr_blocks = var.allow_ping_cidrs
           }
         } : {}
       ),

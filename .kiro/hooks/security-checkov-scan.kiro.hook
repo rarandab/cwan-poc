@@ -7,7 +7,9 @@
     "type": "userTriggered"
   },
   "then": {
-    "type": "runCommand",
-    "command": "checkov --quiet -d . --framework terraform --output json"
-  }
+    "type": "askAgent",
+    "prompt": "Do a security scan running `checkov --quiet -d . --framework terraform --output json` and do an analysis of the result for doing remediation on findings or skip if not applies the risk in a PoC"
+  },
+  "workspaceFolderName": "cwan-poc",
+  "shortName": "security-checkov-scan"
 }

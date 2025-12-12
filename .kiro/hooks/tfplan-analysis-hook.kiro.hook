@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Terraform Plan Analyzer",
+  "description": "When tfplan.txt is updated, automatically analyze the Terraform plan and generate a prettified TFPLAN.md markdown document with a summary of resources to be created, modified, or destroyed.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/tfplan.txt",
+      "tfplan.txt"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Read the tfplan.txt file and generate a TFPLAN.md file with a prettified analysis of the Terraform plan. Include:\n\n1. **Summary** - Total counts of resources to add, change, and destroy\n2. **Resources to Create** - List all resources being created with their names and types\n3. **Resources to Modify** - List all resources being changed, highlighting what attributes are changing\n4. **Resources to Destroy** - List all resources being destroyed\n5. **Potential Concerns** - Flag any destructive changes or resources that might cause downtime\n6. **Cost Impact** - Note any resources that may have cost implications (EC2, NAT Gateways, etc.)\n\nFormat the output as clean, readable markdown with tables where appropriate\n\nPay attention in the cost analysis to the effect on the costs of some policies as the core_network one with edge locations."
+  },
+  "workspaceFolderName": "cwan-poc",
+  "shortName": "tfplan-analysis-hook"
+}

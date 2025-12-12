@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "aws-docs": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "search_documentation",
+        "read_documentation"
+      ]
+    },
+    "awslabs.terraform-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "awslabs.terraform-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "SearchAwsProviderDocs",
+        "SearchSpecificAwsIaModules",
+        "ExecuteTerraformCommand"
+      ],
+      "disabledTools": [
+        "ExecuteTerragruntCommand",
+        "RunCheckovScan",
+        "ExecuteTerraformCommand"
+      ]
+    }
+  }
+}

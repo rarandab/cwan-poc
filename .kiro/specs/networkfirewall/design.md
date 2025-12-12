@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design adds AWS Network Firewall as an alternative traffic inspection mechanism to the existing Gateway Load Balancer with tunnel handler (`gwlbtunfw`) implementation. The solution introduces a new input variable `inspection_type` that allows operators to select between the two inspection options, with the existing GWLB tunnel handler remaining as the default.
+This design adds AWS Network Firewall as an alternative traffic inspection mechanism to the existing Gateway Load Balancer with tunnel handler (`fake_firewall`) implementation. The solution introduces a new input variable `inspection_type` that allows operators to select between the two inspection options, with the existing GWLB tunnel handler remaining as the default.
 
 The Network Firewall implementation will integrate with the existing NFG VPC architecture, deploying firewall endpoints in the firewall subnets and configuring appropriate routing to ensure traffic flows through the inspection layer before reaching its destination.
 
@@ -35,7 +35,7 @@ graph TB
     
     CWN --> NFG
     NFG --> CWN_SUB
-    CWN_SUB --> |inspection_type=gwlbtunfw| GWLB
+    CWN_SUB --> |inspection_type=fake_firewall| GWLB
     CWN_SUB --> |inspection_type=network_firewall| NFWE
     GWLB --> TH
     NFWE --> NFW
@@ -54,7 +54,7 @@ graph TB
 
 The `inspection_type` variable controls which resources are deployed:
 
-| Resource | inspection_type = "gwlbtunfw" | inspection_type = "network_firewall" |
+| Resource | inspection_type = "fake_firewall" | inspection_type = "network_firewall" |
 |----------|------------------------------|--------------------------------------|
 | GWLB | ✓ | ✗ |
 | Tunnel Handler EC2 | ✓ | ✗ |
@@ -70,13 +70,13 @@ The `inspection_type` variable controls which resources are deployed:
 
 ```hcl
 variable "inspection_type" {
-  description = "Type of inspection to deploy: gwlbtunfw (GWLB with tunnel handler) or network_firewall (AWS Network Firewall)"
+  description = "Type of inspection to deploy: fake_firewall (GWLB with tunnel handler) or network_firewall (AWS Network Firewall)"
   type        = string
-  default     = "gwlbtunfw"
+  default     = "fake_firewall"
   
   validation {
-    condition     = contains(["gwlbtunfw", "network_firewall"], var.inspection_type)
-    error_message = "inspection_type must be either 'gwlbtunfw' or 'network_firewall'."
+    condition     = contains(["fake_firewall", "network_firewall"], var.inspection_type)
+    error_message = "inspection_type must be either 'fake_firewall' or 'network_firewall'."
   }
 }
 ```
@@ -265,7 +265,7 @@ Based on the prework analysis, the following correctness properties have been id
 
 ### Property 2: Invalid Inspection Type Rejection
 
-*For any* string value that is not "gwlbtunfw" or "network_firewall", the Terraform configuration SHALL fail validation with an appropriate error message.
+*For any* string value that is not "fake_firewall" or "network_firewall", the Terraform configuration SHALL fail validation with an appropriate error message.
 
 **Validates: Requirements 1.4**
 
@@ -295,8 +295,8 @@ The `inspection_type` variable includes a validation block that rejects invalid 
 
 ```hcl
 validation {
-  condition     = contains(["gwlbtunfw", "network_firewall"], var.inspection_type)
-  error_message = "inspection_type must be either 'gwlbtunfw' or 'network_firewall'."
+  condition     = contains(["fake_firewall", "network_firewall"], var.inspection_type)
+  error_message = "inspection_type must be either 'fake_firewall' or 'network_firewall'."
 }
 ```
 
@@ -321,8 +321,8 @@ This implementation requires both unit testing and property-based testing to ens
 
 Unit tests will verify specific configurations and edge cases:
 
-1. **Default Value Test**: Verify `inspection_type` defaults to "gwlbtunfw"
-2. **GWLB Deployment Test**: Verify GWLB resources are created when `inspection_type = "gwlbtunfw"`
+1. **Default Value Test**: Verify `inspection_type` defaults to "fake_firewall"
+2. **GWLB Deployment Test**: Verify GWLB resources are created when `inspection_type = "fake_firewall"`
 3. **NFW Deployment Test**: Verify Network Firewall resources are created when `inspection_type = "network_firewall"`
 4. **Rule Group Content Test**: Verify ICMP and HTTP rules exist in the rule group
 5. **Logging Configuration Test**: Verify CloudWatch Log Group and logging configuration are properly linked

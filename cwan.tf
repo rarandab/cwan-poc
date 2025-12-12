@@ -339,9 +339,11 @@ resource "aws_networkmanager_core_network" "this" {
   global_network_id    = aws_networkmanager_global_network.this.id
   create_base_policy   = true
   base_policy_document = jsonencode(jsondecode(data.aws_networkmanager_core_network_policy_document.basic.json))
-
   tags = {
     Name = format("%s-ccn", var.project_code)
+  }
+  lifecycle {
+    ignore_changes = [base_policy_document]
   }
 }
 
@@ -350,5 +352,12 @@ resource "aws_networkmanager_core_network_policy_attachment" "this" {
   core_network_id = aws_networkmanager_core_network.this.id
   //policy_document = jsonencode(jsondecode(data.aws_networkmanager_core_network_policy_document.full.json))
   policy_document = jsonencode(local.cwan_policy)
+  depends_on = [
+    module.ffw_vpc,
+    module.nfg_vpc,
+    module.wkl_vpc-2nd_cidr,
+    module.sdw_vpc,
+    module.shr_vpc
+  ]
 }
 

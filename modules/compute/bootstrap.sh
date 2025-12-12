@@ -8,7 +8,7 @@ TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-meta
 # Get instance information using the token
 PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
 INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/instance-id)
-cat > /var/www/html/index.html << EOF
+cat > /usr/share/nginx/html/index.html << EOF
 <!DOCTYPE html>
 <html lang="en">
 <head>

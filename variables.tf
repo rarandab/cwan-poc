@@ -71,3 +71,14 @@ variable "sdwan" {
   })
   default = null
 }
+
+variable "inspection_type" {
+  description = "Type of inspection to deploy: fake_firewall (GWLB with tunnel handler) or network_firewall (AWS Network Firewall)"
+  type        = string
+  default     = "fake_firewall"
+
+  validation {
+    condition     = contains(["fake_firewall", "network_firewall"], var.inspection_type)
+    error_message = "inspection_type must be either 'fake_firewall' or 'network_firewall'."
+  }
+}

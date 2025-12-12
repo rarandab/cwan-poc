@@ -53,3 +53,9 @@ variable "target_group_arn" {
   type        = string
   description = "ARN of the target group to associate the instances with."
 }
+
+variable "lb_sg_ids" {
+  type        = list(string)
+  description = "Security groups of the load balancer to allow traffic from."
+  default     = []
+}

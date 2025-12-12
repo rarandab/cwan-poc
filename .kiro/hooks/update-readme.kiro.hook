@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Update README.md",
+  "description": "Updates README.md with the project changes",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The README.md file contains details about the PoC. Please review the code and make changes to README.md to create, update or remove details about the architecture and include examples (anonymized) of the input variables; when describing the architecture do difference between the resources that depends on variables of the resources that are always created"
+  },
+  "workspaceFolderName": "cwan-poc",
+  "shortName": "update-readme"
+}

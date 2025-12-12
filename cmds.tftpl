@@ -27,12 +27,12 @@ aws networkmanager get-network-routes --global-network-id ${global_network_id} -
 %{endfor~}
 
 # Connect to instances
-%{for i in ec2_instances ~}
+%{for i in wkl_instances ~}
 [${i.name}] aws ssm start-session --target ${i.id} --region ${i.region}
 %{endfor~}
 
 # Connect to firewalls
-%{for i in nfw_instances ~}
+%{for i in ffw_instances ~}
 [${i.name}] aws ssm start-session --target ${i.id} --region ${i.region}
 %{endfor~}
 

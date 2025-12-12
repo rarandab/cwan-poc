@@ -51,7 +51,7 @@ locals {
       for s in var.core_network_config.segments : s.name => s
     }
   )
-  nfw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 255) if el.inspection }
+  ffw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 255) if el.inspection }
   shr_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 250) }
   sdw_cidrs = { for el in var.core_network_config.edge_locations : el.region => cidrsubnet(el.cidr, 8, 254) if contains(try(var.sdwan.regions, []), el.region) }
   non_routeable_cidrs = {
@@ -74,6 +74,7 @@ locals {
         vpc_key = v
         az_id   = az
         rt_id   = v_d.rt_attributes_by_type_by_az.core_network[az].id
+        en_id   = var.inspection_type == "fake_firewall" ? aws_vpc_endpoint.fake_firewall["${v}-${az}"].id : local.nfw_endpoints["${v}-${az}"]
       }
     ]
   ])
@@ -85,10 +86,52 @@ locals {
           az_id   = az
           rt_id   = v_d.rt_attributes_by_type_by_az.public[az].id
           cidr    = c_d
+          en_id   = var.inspection_type == "fake_firewall" ? aws_vpc_endpoint.fake_firewall["${v}-${az}"].id : local.nfw_endpoints["${v}-${az}"]
         }
       ]
     ]
   ])
+
+  nfw_endpoints_flat = var.inspection_type == "network_firewall" ? flatten([
+    for region_key, fw in aws_networkfirewall_firewall.this : [
+      for sync_state in fw.firewall_status[0].sync_states : {
+        region_key = region_key
+        az_id      = sync_state.availability_zone
+        endpoint   = sync_state.attachment[0].endpoint_id
+      }
+    ]
+  ]) : []
+  nfw_endpoints = { for ep in local.nfw_endpoints_flat : "${ep.region_key}-${ep.az_id}" => ep.endpoint }
+
+  wkl_app_rt = flatten([
+    for v, v_d in module.wkl_vpc : [
+      for az in v_d.azs : {
+        vpc_key = v
+        region  = v_d.vpc_attributes.region
+        az_id   = az
+        rt_id   = v_d.rt_attributes_by_type_by_az.private["app/${az}"].id
+      }
+    ]
+  ])
+  wkl_ilb_rt = flatten([
+    for v, v_d in module.wkl_vpc : [
+      for az in v_d.azs : {
+        vpc_key = v
+        region  = v_d.vpc_attributes.region
+        az_id   = az
+        rt_id   = v_d.rt_attributes_by_type_by_az.private["ilb/${az}"].id
+      }
+    ]
+  ])
+  //flatten([
+  //  for v, v_d in module.nfg_vpc : [
+  //    for az in v_d.azs : {
+  //      vpc_key   = v
+  //      az_id     = az
+  //      subnet_id = v_d.private_subnet_attributes_by_az["nfw/${az}"].id
+  //    }
+  //  ]
+  //])
   regional_endpoints = flatten([
     for el in var.core_network_config.edge_locations : [
       for ep in var.endpoints : {

@@ -18,29 +18,31 @@ resource "aws_security_group" "instance_sg" {
 resource "aws_security_group_rule" "instance_i" {
   for_each = local.instance_sg.ingress
 
-  region            = var.region
-  security_group_id = aws_security_group.instance_sg.id
-  type              = "ingress"
-  from_port         = each.value.from
-  to_port           = each.value.to
-  protocol          = each.value.protocol
-  cidr_blocks       = try(each.value.cidr_blocks, null)
-  prefix_list_ids   = try(each.value.prefix_list_ids, null)
-  description       = each.value.description
+  region                   = var.region
+  security_group_id        = aws_security_group.instance_sg.id
+  type                     = "ingress"
+  from_port                = each.value.from
+  to_port                  = each.value.to
+  protocol                 = each.value.protocol
+  cidr_blocks              = try(each.value.cidr_blocks, null)
+  prefix_list_ids          = try(each.value.prefix_list_ids, null)
+  source_security_group_id = try(each.value.source_security_group_id, null)
+  description              = each.value.description
 }
 
 resource "aws_security_group_rule" "instance_e" {
   for_each = local.instance_sg.egress
 
-  region            = var.region
-  security_group_id = aws_security_group.instance_sg.id
-  type              = "ingress"
-  from_port         = each.value.from
-  to_port           = each.value.to
-  protocol          = each.value.protocol
-  cidr_blocks       = try(each.value.cidr_blocks, null)
-  prefix_list_ids   = try(each.value.prefix_list_ids, null)
-  description       = each.value.description
+  region                   = var.region
+  security_group_id        = aws_security_group.instance_sg.id
+  type                     = "egress"
+  from_port                = each.value.from
+  to_port                  = each.value.to
+  protocol                 = each.value.protocol
+  cidr_blocks              = try(each.value.cidr_blocks, null)
+  prefix_list_ids          = try(each.value.prefix_list_ids, null)
+  source_security_group_id = try(each.value.source_security_group_id, null)
+  description              = each.value.description
 }
 
 data "template_cloudinit_config" "user_data" {
@@ -65,18 +67,17 @@ resource "aws_instance" "workload" {
   iam_instance_profile        = var.ec2_iam_instance_profile
   monitoring                  = true
   ebs_optimized               = true
-
+  user_data_base64            = data.template_cloudinit_config.user_data.rendered
+  user_data_replace_on_change = true
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
-
   root_block_device {
     encrypted = true
   }
-
   tags = {
-    Name                = format("%s-%s-ec2-wkl%02d", var.identifier, var.region_short_name, count.index + 1)
+    Name                = format("%s-%s-ec2-wkl%s%02d", var.identifier, var.region_short_name, var.vpc_name, count.index + 1)
     coe_scheduler_state = "running"
   }
 }

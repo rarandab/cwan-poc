@@ -6,33 +6,19 @@ module "wkl_vpc" {
 
   name                                 = format("%s-%s-vpc-%s", var.project_code, local.region_short_names[each.value.region], each.value.segment)
   region                               = each.value.region
-  cidr_block                           = local.non_routeable_cidrs["workload"]
+  cidr_block                           = each.value.cidr
   vpc_assign_generated_ipv6_cidr_block = false
   vpc_egress_only_internet_gateway     = false
   azs                                  = slice(data.aws_availability_zones.available[each.value.region].names, 0, 2)
   subnets = {
-    core_network = {
-      name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.value.region])
-      cidrs                  = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["workload"], 9, 0), 1, 1)
-      appliance_mode_support = false
-      require_acceptance     = true
-      accept_attachment      = true
-      tags = {
-        "tec:cwnsgm" = format("cwnsgm%s%s", title(var.project_code), title(each.value.segment))
-      }
+    app = {
+      name_prefix = format("%s-%s-vsn-app", var.project_code, local.region_short_names[each.value.region])
+      cidrs       = cidrsubnets(cidrsubnet(each.value.cidr, 1, 0), 1, 1)
     }
-    plb = {
-      name_prefix = format("%s-%s-vsn-plb", var.project_code, local.region_short_names[each.value.region])
-      cidrs       = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["workload"], 8, 1), 1, 1)
+    ilb = {
+      name_prefix = format("%s-%s-vsn-ilb", var.project_code, local.region_short_names[each.value.region])
+      cidrs       = cidrsubnets(cidrsubnet(each.value.cidr, 2, 2), 1, 1)
     }
-    dat = {
-      name_prefix = format("%s-%s-vsn-dat", var.project_code, local.region_short_names[each.value.region])
-      cidrs       = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["workload"], 6, 1), 1, 1)
-    }
-  }
-  core_network = {
-    id  = aws_networkmanager_core_network.this.id
-    arn = aws_networkmanager_core_network.this.arn
   }
   vpc_flow_logs = {
     log_destination_type = "cloud-watch-logs"
@@ -50,28 +36,56 @@ module "wkl_vpc-2nd_cidr" {
   region             = each.value.region
   create_vpc         = false
   vpc_id             = module.wkl_vpc[each.key].vpc_attributes.id
-  cidr_block         = each.value.cidr
+  cidr_block         = local.non_routeable_cidrs["workload"]
   vpc_secondary_cidr = true
   azs                = slice(data.aws_availability_zones.available[each.value.region].names, 0, 2)
   subnets = {
-    app = {
-      name_prefix = format("%s-%s-vsn-app", var.project_code, local.region_short_names[each.value.region])
-      cidrs       = cidrsubnets(cidrsubnet(each.value.cidr, 1, 0), 1, 1)
+    core_network = {
+      name_prefix            = format("%s-%s-vsn-cwn", var.project_code, local.region_short_names[each.value.region])
+      cidrs                  = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["workload"], 9, 0), 1, 1)
+      appliance_mode_support = false
+      require_acceptance     = true
+      accept_attachment      = true
+      tags = {
+        "tec:cwnsgm" = format("cwnsgm%s%s", title(var.project_code), title(each.value.segment))
+      }
     }
-    ilb = {
-      name_prefix = format("%s-%s-vsn-ilb", var.project_code, local.region_short_names[each.value.region])
-      cidrs       = cidrsubnets(cidrsubnet(each.value.cidr, 2, 2), 1, 1)
+    public = {
+      name_prefix    = format("%s-%s-vsn-plb", var.project_code, local.region_short_names[each.value.region])
+      cidrs          = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["workload"], 8, 1), 1, 1)
+      connect_to_igw = true
+    }
+    dat = {
+      name_prefix = format("%s-%s-vsn-dat", var.project_code, local.region_short_names[each.value.region])
+      cidrs       = cidrsubnets(cidrsubnet(local.non_routeable_cidrs["workload"], 6, 1), 1, 1)
     }
   }
   core_network = {
     id  = aws_networkmanager_core_network.this.id
     arn = aws_networkmanager_core_network.this.arn
   }
-  core_network_routes = {
-    app = "0.0.0.0/0"
-    ilb = aws_ec2_managed_prefix_list.corpo[each.value.region].id
-  }
 }
+
+resource "aws_route" "app_default" {
+  for_each = { for rt in local.wkl_app_rt : "${rt.vpc_key}-${rt.az_id}" => rt }
+
+  region                 = each.value.region
+  route_table_id         = each.value.rt_id
+  destination_cidr_block = "0.0.0.0/0"
+  core_network_arn       = aws_networkmanager_core_network.this.arn
+  depends_on             = [module.wkl_vpc-2nd_cidr]
+}
+
+resource "aws_route" "ilb_corpo" {
+  for_each = { for rt in local.wkl_ilb_rt : "${rt.vpc_key}-${rt.az_id}" => rt }
+
+  region                     = each.value.region
+  route_table_id             = each.value.rt_id
+  destination_prefix_list_id = aws_ec2_managed_prefix_list.corpo[each.value.region].id
+  core_network_arn           = aws_networkmanager_core_network.this.arn
+  depends_on                 = [module.wkl_vpc-2nd_cidr]
+}
+
 
 resource "aws_route53_resolver_rule_association" "dfl" {
   for_each = { for v in var.vpcs : "${local.region_short_names[v.region]}-${v.name}" => v }
@@ -100,15 +114,21 @@ module "compute" {
   region                   = each.value.region
   region_short_name        = local.region_short_names[each.value.region]
   source                   = "./modules/compute"
-  vpc_name                 = format("%s-%s-vpc-%s", var.project_code, local.region_short_names[each.value.region], each.value.segment)
+  vpc_name                 = each.value.name
   vpc_id                   = module.wkl_vpc[each.key].vpc_attributes.id
-  workload_subnets         = values({ for k, v in module.wkl_vpc-2nd_cidr[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "app" })
+  workload_subnets         = values({ for k, v in module.wkl_vpc[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "app" })
   instance_type            = "t3.small"
   ec2_iam_instance_profile = aws_iam_instance_profile.common.id
   number_azs               = length(module.wkl_vpc[each.key].azs)
   identifier               = var.project_code
   allowed_icmp_pls         = [aws_ec2_managed_prefix_list.corpo[each.value.region].id]
   target_group_arn         = aws_lb_target_group.workload[each.key].arn
+  depends_on = [
+    aws_route.app_default,
+    aws_vpc_endpoint.fake_firewall,
+    aws_networkfirewall_firewall.this,
+    aws_networkmanager_core_network_policy_attachment.this
+  ]
 }
 
 resource "aws_lb_target_group" "workload" {
@@ -145,7 +165,7 @@ resource "aws_lb" "i_workload" {
   internal                   = true
   load_balancer_type         = "application"
   security_groups            = [aws_security_group.i_alb[each.key].id]
-  subnets                    = values({ for k, v in module.wkl_vpc-2nd_cidr[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "ilb" })
+  subnets                    = values({ for k, v in module.wkl_vpc[each.key].private_subnet_attributes_by_az : split("/", k)[1] => v.id if split("/", k)[0] == "ilb" })
   enable_deletion_protection = false
   tags = {
     Name = format("%s-%s-alb-%s_i", var.project_code, local.region_short_names[each.value.region], each.value.name)
@@ -168,7 +188,8 @@ resource "aws_lb_listener" "i_workload" {
 resource "aws_security_group" "i_alb" {
   for_each = { for v in var.vpcs : "${local.region_short_names[v.region]}-${v.name}" => v }
 
-  name_prefix = format("%s-%s-sg-%s_i_alb", var.project_code, local.region_short_names[each.value.region], each.value.name)
+  region      = each.value.region
+  name        = format("%s-%s-vsg-alb%s", var.project_code, local.region_short_names[each.value.region], each.value.name)
   description = "Security group for ALB"
   vpc_id      = module.wkl_vpc[each.key].vpc_attributes.id
   ingress {

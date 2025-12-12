@@ -21,7 +21,7 @@ resource "local_file" "cmds" {
       global_network_id = aws_networkmanager_global_network.this.id
       core_network_id   = aws_networkmanager_core_network.this.id
       vpc_attachments = [
-        for v, v_d in module.wkl_vpc : {
+        for v, v_d in module.wkl_vpc-2nd_cidr : {
           name = v
           id   = v_d.core_network_attachment.id
         }
@@ -32,7 +32,7 @@ resource "local_file" "cmds" {
           id     = a_d.id
         }
       ]
-      ec2_instances = flatten([
+      wkl_instances = flatten([
         for c, c_d in module.compute : [
           for i, ic in c_d.instances_created : {
             name   = format("%s%g", c, i)
@@ -41,8 +41,8 @@ resource "local_file" "cmds" {
           }
         ]
       ])
-      nfw_instances = flatten([
-        for c, c_d in module.gwlbtunfw : [
+      ffw_instances = flatten([
+        for c, c_d in module.fake_firewall : [
           for i, ic in c_d.instances_created : {
             name   = format("%s%g", c, i)
             id     = ic.id
