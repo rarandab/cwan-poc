@@ -48,7 +48,6 @@ resource "aws_security_group_rule" "instance_e" {
 data "template_cloudinit_config" "user_data" {
   base64_encode = true
   gzip          = false
-
   part {
     content_type = "text/x-shellscript"
     content      = file("${path.module}/bootstrap.sh")
@@ -72,6 +71,9 @@ resource "aws_instance" "workload" {
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
+  }
+  private_dns_name_options {
+    hostname_type = "resource-name"
   }
   root_block_device {
     encrypted = true

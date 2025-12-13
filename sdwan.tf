@@ -169,16 +169,16 @@ resource "aws_instance" "sdwan" {
   user_data_replace_on_change = true
   monitoring                  = true
   ebs_optimized               = true
-
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
-
+  private_dns_name_options {
+    hostname_type = "resource-name"
+  }
   root_block_device {
     encrypted = true
   }
-
   primary_network_interface {
     network_interface_id = aws_network_interface.sdwan[each.key].id
   }

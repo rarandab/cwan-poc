@@ -65,12 +65,13 @@ resource "aws_instance" "firewall" {
   source_dest_check           = false
   monitoring                  = true
   ebs_optimized               = true
-
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
-
+  private_dns_name_options {
+    hostname_type = "resource-name"
+  }
   root_block_device {
     encrypted = true
   }
